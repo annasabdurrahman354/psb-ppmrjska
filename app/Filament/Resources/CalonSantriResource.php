@@ -21,13 +21,17 @@ use App\Models\CalonSantri;
 use App\Models\Daerah;
 use App\Models\DokumenPendaftaran;
 use App\Models\GelombangPendaftaran;
+use App\Models\Pendaftaran;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Kota;
 use App\Models\Provinsi;
+use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
@@ -51,9 +55,15 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
+use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Layout\Split as TableSplit;
 use Filament\Tables\Columns\Layout\Stack as TableStack;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -61,6 +71,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TagsInput;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class CalonSantriResource extends Resource
 {
@@ -77,16 +88,77 @@ class CalonSantriResource extends Resource
         return $form
             ->schema([
                 Section::make('Informasi Pendaftaran')
-                    ->columns(2)
-                    ->schema([
-                        Select::make('gelombang_pendaftaran_id')
-                            ->label('Gelombang Pendaftaran')
-                            ->relationship('gelombangPendaftaran', 'nomor_gelombang') // Asumsi relasi ada dan menampilkan ID atau field lain
-                            ->required()
-                            ->preload()
-                            ->searchable()
-                            ->live(),
-                    ]),
+                ->columns(2)
+                ->schema([
+                    Select::make('pendaftaran_id') // Field baru untuk memilih Pendaftaran (tahun)
+                        ->label('Tahun Pendaftaran')
+                        ->options(
+                            // Ambil semua pendaftaran, jadikan tahun sebagai label
+                            Pendaftaran::query()
+                                ->orderBy('tahun_pendaftaran', 'desc') // Urutkan dari terbaru
+                                ->pluck('tahun_pendaftaran', 'id')
+                                ->mapWithKeys(fn ($tahun, $id) => [$id => $tahun]) // Format label
+                        )
+                        ->searchable()
+                        ->preload() // Load opsi saat halaman dimuat
+                        ->live() // Penting agar field Gelombang bereaksi
+                        ->afterStateUpdated(fn (Set $set) => $set('gelombang_pendaftaran_id', null)) // Reset Gelombang jika Pendaftaran berubah
+                        ->required(fn (string $operation): bool => $operation === 'create')
+                        // Disable di halaman edit/view
+                        ->disabled(fn (string $operation): bool => $operation !== 'create')
+                        // Jangan simpan field ini ke database CalonSantri
+                        ->dehydrated(false)
+                        // Saat load (edit/view), default value diambil dari relasi record
+                        ->default(function (Get $get, $record) {
+                            // Coba ambil pendaftaran_id dari record yang ada (edit/view)
+                            if ($record instanceof CalonSantri && $record->gelombangPendaftaran) {
+                                return $record->gelombangPendaftaran->pendaftaran_id;
+                            }
+                            // Jika create atau tidak ada relasi, biarkan kosong
+                            return null;
+                        }),
+
+                    Select::make('gelombang_pendaftaran_id')
+                        ->label('Gelombang Pendaftaran')
+                        ->options(function (Get $get): Collection { // Gunakan closure untuk opsi dinamis
+                            $pendaftaranId = $get('pendaftaran_id'); // Ambil ID pendaftaran yang dipilih
+                            if (!$pendaftaranId) {
+                                return collect(); // Kembalikan koleksi kosong jika belum ada pendaftaran dipilih
+                            }
+                            // Query Gelombang berdasarkan pendaftaran_id yang dipilih
+                            return GelombangPendaftaran::query()
+                                ->where('pendaftaran_id', $pendaftaranId)
+                                ->orderBy('nomor_gelombang') // Urutkan berdasarkan nomor gelombang
+                                ->pluck('nomor_gelombang', 'id') // Ambil nomor gelombang dan id
+                                ->mapWithKeys(fn ($nomor, $id) => [$id => 'Gelombang ' . $nomor]); // Format label
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->live() // Penting agar section dokumen bereaksi
+                        ->required()
+                        ->disabled(fn (Get $get): bool => !$get('pendaftaran_id'))
+                        ->afterStateUpdated(function (Set $set, ?string $state): void {
+                            // Hitung ulang default items untuk repeater dokumen
+                            $defaultItems = [];
+                            if ($state) { // Jika ada gelombang dipilih
+                                $gelombang = GelombangPendaftaran::find($state);
+                                if ($gelombang && $gelombang->pendaftaran_id) {
+                                    $requiredDokumen = DokumenPendaftaran::where('pendaftaran_id', $gelombang->pendaftaran_id)->get();
+                                    foreach ($requiredDokumen as $dokumen) {
+                                        $defaultItems[] = [
+                                            'dokumen_pendaftaran_id' => $dokumen->id,
+                                            'media' => null, // Pastikan ada key untuk field Spatie
+                                        ];
+                                    }
+                                }
+                            }
+                            // Set ulang state repeater 'dokumen' dengan item baru
+                            // Ini akan mengganti item yang ada di repeater saat create/edit
+                            $set('dokumen', $defaultItems);
+                        })
+                        ->key('gelombang_select'), // Beri key unik jika diperlukan untuk reset/update
+
+                ]),
 
                 Section::make('Data Diri')
                     ->columns(2)
@@ -105,7 +177,7 @@ class CalonSantriResource extends Resource
                             ->required()
                             ->inline(),
                         TextInput::make('nomor_telepon')
-                            ->label('Nomor Telepon')
+                            ->label('Nomor Telepon (Whatsapp)')
                             ->tel()
                             ->required(),
                         TextInput::make('email')
@@ -126,8 +198,9 @@ class CalonSantriResource extends Resource
                             ->searchable()
                             ->live() // <-- Penting untuk logika kondisional
                             ->required(),
-                        TextInput::make('nomor_identitas_kependudukan')
-                            ->label('NIK')
+                        TextInput::make('nomor_induk_kependudukan')
+                            ->label('Nomor Induk Kependudukan')
+                            ->length(16)
                             ->visible(fn (Get $get): bool => $get('kewarganegaraan') === 'Indonesia') // Tampil jika Indonesia
                             ->required(fn (Get $get): bool => $get('kewarganegaraan') === 'Indonesia'), // Wajib jika Indonesia
                         TextInput::make('nomor_kartu_keluarga')
@@ -161,7 +234,7 @@ class CalonSantriResource extends Resource
                                     ->required(),
                             ]),
                         Grid::make(4) // Dependent Selects for Indonesia
-                        ->visible(fn (Get $get): bool => $get('kewarganegaraan') === 'Indonesia')
+                            ->visible(fn (Get $get): bool => $get('kewarganegaraan') === 'Indonesia')
                             ->schema([
                                 Select::make('provinsi_id')
                                     ->label('Provinsi')
@@ -198,8 +271,12 @@ class CalonSantriResource extends Resource
                                     ->required(fn (Get $get): bool => $get('kewarganegaraan') === 'Indonesia'),
                             ]),
                         Grid::make(2) // Fields for Non-Indonesia
-                        ->visible(fn (Get $get): bool => $get('kewarganegaraan') !== null && $get('kewarganegaraan') !== 'Indonesia')
+                            ->visible(fn (Get $get): bool => $get('kewarganegaraan') !== null && $get('kewarganegaraan') !== 'Indonesia')
                             ->schema([
+                                Textarea::make('alamat')
+                                    ->label('Address')
+                                    ->rows(3)
+                                    ->required(fn (Get $get): bool => $get('kewarganegaraan') !== null && $get('kewarganegaraan') !== 'Indonesia'),
                                 TextInput::make('city')
                                     ->label('City')
                                     ->required(fn (Get $get): bool => $get('kewarganegaraan') !== null && $get('kewarganegaraan') !== 'Indonesia'),
@@ -207,7 +284,8 @@ class CalonSantriResource extends Resource
                                     ->label('State/Province')
                                     ->required(fn (Get $get): bool => $get('kewarganegaraan') !== null && $get('kewarganegaraan') !== 'Indonesia'),
                                 TextInput::make('kode_pos') // Kode Pos bisa relevan untuk non-indo juga
-                                ->label('Postal Code'),
+                                    ->label('Postal Code')
+                                    ->required(fn (Get $get): bool => $get('kewarganegaraan') !== null && $get('kewarganegaraan') !== 'Indonesia'),
                             ]),
                     ]),
 
@@ -362,7 +440,7 @@ class CalonSantriResource extends Resource
                             ->live()
                             ->required(),
                         TextInput::make('nomor_telepon_ayah')
-                            ->label('Nomor Telepon Ayah')
+                            ->label('Nomor Telepon Ayah (Whatsapp Diutamakan)')
                             ->tel()
                             ->required(fn (Get $get): bool => $get('status_ayah') === StatusOrangTua::HIDUP->value), // Wajib jika hidup
                         TextInput::make('tempat_lahir_ayah')
@@ -408,7 +486,7 @@ class CalonSantriResource extends Resource
                             ->live()
                             ->required(),
                         TextInput::make('nomor_telepon_ibu')
-                            ->label('Nomor Telepon Ibu')
+                            ->label('Nomor Telepon Ibu (Whatsapp Diutamakan)')
                             ->tel()
                             ->required(fn (Get $get): bool => $get('status_ibu') === StatusOrangTua::HIDUP->value), // Wajib jika hidup
                         TextInput::make('tempat_lahir_ibu')
@@ -457,7 +535,7 @@ class CalonSantriResource extends Resource
                             ->visible(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value)
                             ->required(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
                         TextInput::make('nomor_telepon_wali')
-                            ->label('Nomor Telepon Wali')
+                            ->label('Nomor Telepon Wali (Whatsapp Diutamakan)')
                             ->tel()
                             ->visible(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value)
                             ->required(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
@@ -489,342 +567,279 @@ class CalonSantriResource extends Resource
                             ->visible(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
                     ]),
 
-                Section::make('Upload Dokumen Persyaratan')
-                    ->description('Unggah semua dokumen yang diperlukan sesuai daftar.')
-                    ->collapsible() // Opsional: buat section bisa dilipat
-                    ->schema(function(Get $get): array { // Gunakan closure agar bisa akses $get
-                        $gelombangId = $get('gelombang_pendaftaran_id');
-                        $fields = [];
+                Section::make('Upload Dokumen')
+                    ->columns(2)
+                    ->schema([
+                        Repeater::make('dokumen') // Nama relasi HasMany di CalonSantri
+                            ->hiddenLabel()
+                            ->relationship('dokumen') // Menggunakan relasi 'dokumen()'
+                            ->addable(false) // User tidak bisa menambah item
+                            ->deletable(false) // User tidak bisa menghapus item
+                            ->reorderable(false) // User tidak bisa mengubah urutan
+                            ->columnSpanFull()
+                            ->grid(1) // Layout 2 kolom untuk setiap item dokumen
+                            ->required() // Repeater secara keseluruhan wajib (minimal harus ada item default)
+                            ->helperText('Pastikan semua dokumen yang diperlukan telah diunggah.')
+                            ->default(function(Get $get, string $operation, ?Model $record): ?array {
+                                // Hanya isi default saat CREATE dan belum ada data relasi
+                                if ($operation !== 'create' || ($record instanceof CalonSantri && $record->dokumen()->exists())) {
+                                    return null; // Biarkan Filament load dari relasi jika Edit/View
+                                }
 
-                        if (!$gelombangId) {
-                            // Jika gelombang belum dipilih, tampilkan placeholder
-                            $fields[] = Placeholder::make('pilih_gelombang_dulu')
-                                ->content('Silakan pilih Gelombang Pendaftaran terlebih dahulu untuk melihat daftar dokumen.');
-                            return $fields;
-                        }
+                                $gelombangId = $get('gelombang_pendaftaran_id');
+                                if (!$gelombangId) return []; // Perlu gelombang dipilih
 
-                        // Ambil Pendaftaran ID dari Gelombang Pendaftaran
-                        $gelombang = GelombangPendaftaran::find($gelombangId);
-                        if (!$gelombang || !$gelombang->pendaftaran_id) {
-                            $fields[] = Placeholder::make('pendaftaran_tidak_valid')
-                                ->content('Gelombang Pendaftaran tidak valid atau tidak terhubung ke Pendaftaran.');
-                            return $fields;
-                        }
-                        $pendaftaranId = $gelombang->pendaftaran_id;
+                                $gelombang = GelombangPendaftaran::find($gelombangId);
+                                if (!$gelombang || !$gelombang->pendaftaran_id) return [];
 
-                        // Fetch DokumenPendaftaran yang relevan berdasarkan pendaftaran_id
-                        // Anda mungkin ingin menambahkan ->with('media') jika cek template dilakukan di sini
-                        $requiredDokumenPendaftaran = DokumenPendaftaran::where('pendaftaran_id', $pendaftaranId)->get();
+                                $requiredDokumen = DokumenPendaftaran::where('pendaftaran_id', $gelombang->pendaftaran_id)->get();
+                                if($requiredDokumen->isEmpty()) return [];
 
-                        if ($requiredDokumenPendaftaran->isEmpty()) {
-                            $fields[] = Placeholder::make('dokumen_kosong')
-                                ->content('Tidak ada dokumen persyaratan yang perlu diunggah untuk gelombang ini.');
-                            return $fields;
-                        }
+                                $defaultItems = [];
+                                foreach ($requiredDokumen as $dokumen) {
+                                    // Siapkan data untuk setiap item repeater (akan menjadi record DokumenCalonSantri baru)
+                                    $defaultItems[] = [
+                                        // 'calon_santri_id' => ?? -> ini akan diisi otomatis oleh relationship()
+                                        'dokumen_pendaftaran_id' => $dokumen->id, // Set ID dokumen yang diperlukan
+                                        // 'file_upload' => null // Nama field upload di skema bawah
+                                    ];
+                                }
+                                return $defaultItems;
+                            })
+                            ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
+                                // Seharusnya ID sudah ada dari ->default(), tapi bisa ditambahkan safety check
+                                if (empty($data['dokumen_pendaftaran_id'])) {
+                                    // Mungkin perlu logic fallback atau throw error jika ID hilang
+                                    Log::error('Missing dokumen_pendaftaran_id during Repeater creation', $data);
+                                    // throw new \Exception('Dokumen pendaftaran ID tidak ditemukan.');
+                                }
+                                // Pastikan hanya field yg ada di fillable DokumenCalonSantri yg dikirim
+                                return [
+                                    'dokumen_pendaftaran_id' => $data['dokumen_pendaftaran_id'] ?? null,
+                                    // 'calon_santri_id' akan dihandle oleh Filament
+                                ];
+                            })
+                            ->schema([
+                                // Field tersembunyi untuk menyimpan ID DokumenPendaftaran
+                                // Ini penting agar data tersimpan dengan benar ke pivot
+                                Hidden::make('dokumen_pendaftaran_id')->required(),
 
-                        // Buat field upload untuk setiap dokumen yang diperlukan
-                        foreach ($requiredDokumenPendaftaran as $dokumen) {
-                            // Buat nama field yang unik, misalnya menggunakan ID DokumenPendaftaran
-                            // Nama ini akan digunakan di backend saat menyimpan
-                            $fieldName = 'dokumen_' . $dokumen->id;
+                                Placeholder::make('nama_dokumen')
+                                    ->label(function(Get $get): string {
+                                        $docId = $get('dokumen_pendaftaran_id');
+                                        return DokumenPendaftaran::find($docId)?->nama ?? 'Dokumen Tidak Dikenal';
+                                    })
+                                    ->content(function(Get $get): ?string {
+                                        $docId = $get('dokumen_pendaftaran_id');
+                                        return DokumenPendaftaran::find($docId)?->keterangan;
+                                    }),
 
-                            $uploadField = SpatieMediaLibraryFileUpload::make($fieldName)
-                                ->label($dokumen->nama) // Nama dokumen sebagai label
-                                ->collection('dokumen_calon_santri_berkas') // Collection tujuan pada model DokumenCalonSantri
-                                ->required() // Wajib diisi
-                                ->helperText($dokumen->keterangan) // Keterangan sebagai helper text
-                                ->maxSize(5120) // Contoh: Batasi ukuran file 5MB
-                                ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png']); // Contoh: Batasi tipe file
-
-                            // Tambahkan aksi download jika DokumenPendaftaran memiliki template
-                            // Pastikan model DokumenPendaftaran sudah di-load dengan relasi media jika mengeceknya di sini
-                            // atau gunakan $dokumen->hasMedia() jika model sudah di-retrieve dengan benar.
-                            try {
-                                $templateMedia = $dokumen->getFirstMediaUrl('dokumen_pendaftaran_template');
-                                if ($templateMedia) {
-                                    $uploadField = $uploadField->hintAction(
-                                        Action::make('download_template_' . $dokumen->id)
+                                // Field upload Spatie, terikat ke DokumenCalonSantri (model relasi)
+                                SpatieMediaLibraryFileUpload::make('media') // Nama field ini PENTING! Harus match dengan collection di DokumenCalonSantri jika ingin otomatis
+                                    ->hiddenLabel()
+                                    ->collection('dokumen_calon_santri_berkas') // Nama collection di DokumenCalonSantri
+                                    ->required() // Wajib upload
+                                    ->maxSize(5120)
+                                    ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
+                                    ->openable()
+                                    ->downloadable()
+                                    // Aksi download template
+                                    ->hintAction(
+                                        Action::make('download_template_repeater')
                                             ->label('Unduh Template')
                                             ->icon('heroicon-o-arrow-down-tray')
-                                            ->url($templateMedia) // Dapatkan URL download
+                                            ->url(function(Get $get): ?string {
+                                                $docId = $get('dokumen_pendaftaran_id');
+                                                $dokumen = DokumenPendaftaran::with('media')->find($docId);
+                                                return $dokumen?->getFirstMediaUrl('dokumen_pendaftaran_template');
+                                            })
                                             ->openUrlInNewTab()
-                                            ->color('gray') // Opsional: styling
-                                            ->tooltip($templateMedia)
-                                    );
-                                }
-                            } catch (\Exception $e) {
-                                // Handle error jika media tidak ditemukan atau ada masalah lain
-                                Notification::make('dokumen_pendaftaran_error')
-                                    ->title('Terjadi Kesalahan!')
-                                    ->danger()
-                                    ->body('Dokumen tidak ditemukan.');
-                            }
-
-
-                            $fields[] = $uploadField;
-                        }
-
-                        return $fields;
-
-                    })
-                    ->columns(1) // Atur layout kolom sesuai kebutuhan, misal 1 atau 2
+                                            ->color('gray')
+                                            ->visible(function(Get $get): bool {
+                                                $docId = $get('dokumen_pendaftaran_id');
+                                                $dokumen = DokumenPendaftaran::find($docId);
+                                                // Cek apakah model punya media di collection tsb
+                                                return $dokumen && $dokumen->hasMedia('dokumen_pendaftaran_template');
+                                            })
+                                            ->tooltip('Unduh template jika diperlukan')
+                                    )
+                                    ->columnSpan(1), // Kolom untuk field upload
+                            ])
+                            ->key('repeater_dokumen'),
+                    ])
             ]);
     }
 
     public static function table(Table $table): Table
     {
-        // Keep table definition from the previous response
         return $table
             ->columns([
-                // --- Simple view for mobile ---
-                TableStack::make([
-                    TextColumn::make('nama')
-                        ->weight(FontWeight::Bold)
-                        ->searchable(),
-                    TextColumn::make('gelombangPendaftaran.pendaftaran.tahun_pendaftaran')
-                        ->label('Periode')
-                        ->badge(),
-                    TextColumn::make('gelombangPendaftaran.nomor_gelombang')
-                        ->label('Gel.')
-                        ->formatStateUsing(fn ($state) => "Gel. {$state}") // Format state
-                        ->badge()
-                        ->color('success'),
-                    TextColumn::make('email')
-                        ->icon('heroicon-m-envelope')
-                        ->iconColor('primary'),
-                    TextColumn::make('penilaian.status_penerimaan') // Assuming relationship name is 'penilaian'
-                    ->label('Status')
-                        ->badge(),
-                ])->hiddenFrom('md'), // Hide stack on medium screens and up
+                TextColumn::make('nama')
+                    ->label('Nama Lengkap')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('gelombangPendaftaran.pendaftaran.tahun_pendaftaran')
+                    ->label('Tahun Daftar')
+                    ->sortable()
+                    ->searchable()
+                    ->formatStateUsing(fn ($state) => str($state)), // Bisa search tahun
+                TextColumn::make('gelombangPendaftaran.nomor_gelombang')
+                    ->label('Gelombang')
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('jenis_kelamin')
+                    ->label('Jenis Kelamin')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
 
-                // --- Detailed view for desktop ---
-                TableSplit::make([
-                    TableStack::make([
-                        TextColumn::make('nama')
-                            ->weight(FontWeight::Bold)
-                            ->searchable()
-                            ->sortable(),
-                        TextColumn::make('email')
-                            ->icon('heroicon-m-envelope')
-                            ->searchable()
-                            ->copyable()
-                            ->copyMessage('Email copied')
-                            ->iconColor('primary'),
-                        TextColumn::make('nomor_telepon')
-                            ->icon('heroicon-m-phone')
-                            ->searchable()
-                            ->copyable()
-                            ->copyMessage('Phone number copied')
-                            ->iconColor('primary'),
-                    ])->space(1), // Add minimal space in the stack
-                    TableStack::make([
-                        TextColumn::make('gelombangPendaftaran.pendaftaran.tahun_pendaftaran')
-                            ->label('Periode Pendaftaran')
-                            ->badge(),
-                        TextColumn::make('gelombangPendaftaran.nomor_gelombang')
-                            ->label('Gelombang')
-                            ->formatStateUsing(fn ($state) => "Gel. {$state}") // Format state
-                            ->badge()
-                            ->color('success'),
-                        TextColumn::make('penilaian.status_penerimaan') // Assuming relationship name is 'penilaian'
-                        ->label('Status Penerimaan')
-                            ->badge(),
-                        TextColumn::make('created_at')
-                            ->label('Tgl Daftar')
-                            ->dateTime('d M Y H:i')
-                            ->sortable(),
-                    ])->alignment('end')->space(1), // Align to end on desktop
-                ])->visibleFrom('md'), // Show split layout on medium screens and up
-            ])
-            ->contentGrid([ // Optional: Use grid layout on desktop for better spacing if needed
-                'md' => 2,
-                'xl' => 3,
+                IconColumn::make('status_mubaligh') // Contoh jika ingin menampilkan boolean sebagai icon
+                    ->label('Mubaligh')
+                    ->boolean()
+                    ->sortable(),
+
+                TextColumn::make('nomor_telepon')
+                    ->label('No. Telepon')
+                    ->searchable(),
+
+                TextColumn::make('email')
+                    ->label('Email')
+                    ->searchable(),
+
+                // --- Kolom Baru ---
+                TextColumn::make('tanggal_lahir')
+                    ->label('Tanggal Lahir')
+                    ->date('d M Y') // Format tanggal Indonesia
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('usia')
+                    ->label('Usia')
+                    ->state(function (CalonSantri $record): ?string {
+                        if ($record->tanggal_lahir) {
+                            // Hitung usia menggunakan Carbon
+                            return Carbon::parse($record->tanggal_lahir)->age . ' Thn';
+                        }
+                        return null;
+                    })
+                    // Usia biasanya tidak di-sort/search langsung dari DB
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('kewarganegaraan')
+                    ->label('Kewarganegaraan')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('pendidikan_terakhir')
+                    ->label('Pendidikan')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('universitas')
+                    ->label('Universitas')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('program_studi')
+                    ->label('Program Studi')
+                    ->searchable(),
+                TextColumn::make('angkatan_kuliah')
+                    ->label('Angkatan')
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('status_kuliah')
+                    ->label('Status Kuliah')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(), // Tampilkan default
+                TextColumn::make('alamat')
+                    ->label('Alamat')
+                    ->searchable() // Search alamat mungkin kurang efektif jika panjang
+                    ->limit(50) // Batasi tampilan awal
+                    ->tooltip(fn (CalonSantri $record): ?string => $record->alamat),
+                TextColumn::make('daerahSambung.nama') // Akses nama dari relasi
+                ->label('Daerah Sambung')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('nama_ayah')
+                    ->label('Nama Ayah')
+                    ->searchable(),
+                TextColumn::make('status_ayah')
+                    ->label('Status Ayah')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('nama_ibu')
+                    ->label('Nama Ibu')
+                    ->searchable(),
+                TextColumn::make('status_ibu')
+                    ->label('Status Ibu')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('status_tinggal')
+                    ->label('Status Tinggal')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('status_pernikahan')
+                    ->label('Status Nikah')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('hubungan_wali')
+                    ->label('Hubungan Wali')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
+                // --- Akhir Kolom Baru ---
+
+                TextColumn::make('created_at')
+                    ->label('Tanggal Input')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\TrashedFilter::make(),
-                Tables\Filters\SelectFilter::make('gelombang_pendaftaran_id')
-                    ->label('Gelombang')
-                    ->relationship('gelombangPendaftaran', 'nomor_gelombang', fn(Builder $query) =>
-                    $query->join('pendaftaran', 'gelombang_pendaftaran.pendaftaran_id', '=', 'pendaftaran.id')
-                        ->selectRaw("gelombang_pendaftaran.id, CONCAT(pendaftaran.tahun_pendaftaran, ' - Gel. ', gelombang_pendaftaran.nomor_gelombang) as display_name")
-                        ->orderBy('pendaftaran.tahun_pendaftaran', 'desc')
-                        ->orderBy('gelombang_pendaftaran.nomor_gelombang', 'asc')
+                SelectFilter::make('pendaftaran_tahun')
+                    ->label('Tahun Pendaftaran')
+                    ->options(
+                        Pendaftaran::query()
+                            ->orderBy('tahun_pendaftaran', 'desc')
+                            ->pluck('tahun_pendaftaran', 'tahun_pendaftaran')
                     )
-                    ->getOptionLabelFromRecordUsing(fn(Model $record) => $record->display_name ?? "Gel. {$record->nomor_gelombang}")
-                    ->searchable()
-                    ->preload(),
-                Tables\Filters\SelectFilter::make('penilaian_status_penerimaan') // Ensure unique name if relation used elsewhere
-                ->label('Status Penerimaan')
-                    ->options(\App\Enums\StatusPenerimaan::class) // Assuming you have the enum
                     ->query(function (Builder $query, array $data): Builder {
-                        $status = $data['value'];
-                        if (blank($status)) {
-                            return $query;
-                        }
-                        return $query->whereHas('penilaian', function (Builder $subQuery) use ($status) {
-                            $subQuery->where('status_penerimaan', $status);
-                        });
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $tahun): Builder => $query->whereHas('gelombangPendaftaran.pendaftaran', fn(Builder $q) => $q->where('tahun_pendaftaran', $tahun))
+                        );
                     }),
 
+                SelectFilter::make('jenis_kelamin')
+                    ->label('Jenis Kelamin')
+                    ->options(JenisKelamin::class),
 
+                // --- Filter Baru ---
+                SelectFilter::make('status_kuliah')
+                    ->label('Status Kuliah')
+                    ->options(StatusKuliah::class) // Langsung dari Enum
+                    ->searchable(), // Buat searchable jika opsinya banyak
+                // --- Akhir Filter Baru ---
+
+                Tables\Filters\TrashedFilter::make(), // Jika menggunakan SoftDeletes
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function infolist(Infolist $infolist): Infolist
-    {
-        return $infolist
-            ->schema([
-                InfolistSplit::make([
-                    // Left Column (Grow)
-                    InfolistGroup::make([
-                        // ... (Keep sections for Pendaftaran, Pribadi, Pendidikan, Sambung, Kesehatan from previous response) ...
-                        InfolistSection::make('Informasi Pendaftaran')
-                            ->columns(2)
-                            ->schema([
-                                TextEntry::make('gelombangPendaftaran.pendaftaran.tahun_pendaftaran')->label('Periode'),
-                                TextEntry::make('gelombangPendaftaran.nomor_gelombang')->label('Gelombang')->formatStateUsing(fn ($state) => "Gel. {$state}"),
-                                TextEntry::make('penilaian.status_penerimaan')->badge()->label('Status Penerimaan'),
-                                TextEntry::make('created_at')->dateTime('d M Y H:i')->label('Tanggal Daftar'),
-                            ]),
-                        InfolistSection::make('Informasi Pribadi')
-                            ->columns(3)
-                            ->schema([
-                                TextEntry::make('nama')->columnSpan(2),
-                                TextEntry::make('nama_panggilan'),
-                                TextEntry::make('jenis_kelamin')->badge(),
-                                TextEntry::make('kewarganegaraan'),
-                                TextEntry::make('nomor_identitas_kependudukan')->label('NIK')->copyable(),
-                                TextEntry::make('nomor_kartu_keluarga')->label('No. KK')->copyable(),
-                                TextEntry::make('nomor_passport')->copyable()->placeholder('N/A'),
-                                TextEntry::make('tempat_lahir'),
-                                TextEntry::make('tanggal_lahir')->date('d M Y'),
-                                IconEntry::make('status_mubaligh')->boolean()->label('Sudah Mubaligh?'),
-                                IconEntry::make('pernah_mondok')->boolean()->label('Pernah Mondok?'),
-                                TextEntry::make('nama_pondok_sebelumnya')->visible(fn($state) => filled($state)),
-                                TextEntry::make('lama_mondok_sebelumnya')->suffix(' tahun')->visible(fn($state) => filled($state)),
-                                TextEntry::make('status_pernikahan')->badge(),
-                                TextEntry::make('status_tinggal')->badge(),
-                                TextEntry::make('anak_nomor')->label('Anak Ke-'),
-                                TextEntry::make('jumlah_saudara')->label('Jml. Saudara'),
-                            ]),
-                        InfolistSection::make('Pendidikan & Keahlian')
-                            ->columns(2)
-                            ->schema([
-                                TextEntry::make('pendidikan_terakhir')->badge(),
-                                TextEntry::make('jurusan'),
-                                TextEntry::make('program_studi'),
-                                TextEntry::make('universitas'),
-                                TextEntry::make('angkatan_kuliah'),
-                                TextEntry::make('status_kuliah')->badge(),
-                                TextEntry::make('mulai_mengaji')->badge(),
-                                TextEntry::make('bahasa_makna')->badge(),
-                                TextEntry::make('bahasa_harian')->badge()->listWithLineBreaks()->label('Bahasa Harian'),
-                                TextEntry::make('keahlian')->badge()->listWithLineBreaks(),
-                                TextEntry::make('hobi')->badge()->listWithLineBreaks(),
-                                TextEntry::make('sim')->badge()->separator(', ')->label('SIM'),
-                            ]),
-                        InfolistSection::make('Informasi Sambung')
-                            ->columns(2)
-                            ->schema([
-                                TextEntry::make('kelompok_sambung'),
-                                TextEntry::make('desa_sambung'),
-                                TextEntry::make('daerahSambung.nama')->label('Daerah Sambung'),
-                            ]),
-                        InfolistSection::make('Informasi Kesehatan')
-                            ->columns(2)
-                            ->schema([
-                                TextEntry::make('tinggi_badan')->suffix(' cm'),
-                                TextEntry::make('berat_badan')->suffix(' kg'),
-                                TextEntry::make('golongan_darah')->badge(),
-                                TextEntry::make('ukuran_baju')->badge(),
-                                TextEntry::make('riwayat_sakit')->columnSpanFull(),
-                                TextEntry::make('alergi')->columnSpanFull(),
-                            ]),
-
-                        // Section to display uploaded documents using RepeatableEntry
-                        InfolistSection::make('Dokumen Terupload')
-                            ->schema([
-                                RepeatableEntry::make('dokumen') // Target the relationship
-                                ->label('') // Hide main label if needed
-                                ->schema([
-                                    TextEntry::make('dokumenPendaftaran.nama') // Show the required document name
-                                    ->label('Jenis Dokumen')
-                                        ->weight(FontWeight::Medium),
-                                    SpatieMediaLibraryImageEntry::make('dokumen_upload') // Arbitrary name for the media entry
-                                    ->label('File Terupload')
-                                        ->collection('dokumen_calon_santri_berkas') // The collection name on DokumenCalonSantri
-                                        ->checkFileExistence(false) // Optimisation if many files/remote storage
-                                        ->hintAction( // Add a download action
-                                            Infolists\Components\Actions\Action::make('download')
-                                                ->label('Download')
-                                                ->icon('heroicon-o-document-arrow-down')
-                                                ->url(function (Model $record): ?string {
-                                                    $media = $record->getFirstMedia('dokumen_calon_santri_berkas');
-                                                    return $media?->getUrl();
-                                                })
-                                                ->openUrlInNewTab(),
-                                        ),
-
-                                ])
-                                    ->grid(1) // Display each document info stacked
-                                    ->contained(false), // Remove container around each repeatable item if desired
-                            ])
-                    ])->grow(), // Left column takes available space
-
-                    // Right Column (Fixed Width)
-                    InfolistGroup::make([
-                        // ... (Keep sections for Alamat, Kontak, Keluarga from previous response) ...
-                        InfolistSection::make('Alamat')
-                            ->schema([
-                                TextEntry::make('alamat')->columnSpanFull(),
-                                TextEntry::make('rt'),
-                                TextEntry::make('rw'),
-                                TextEntry::make('provinsi.nama')->label('Provinsi'),
-                                TextEntry::make('kota.nama')->label('Kota/Kab'),
-                                TextEntry::make('kecamatan.nama')->label('Kecamatan'),
-                                TextEntry::make('kelurahan.nama')->label('Kelurahan'),
-                                TextEntry::make('city')->label('City (LN)'),
-                                TextEntry::make('state_province')->label('State/Province (LN)'),
-                                TextEntry::make('kode_pos'),
-                            ])->columns(1), // Single column layout for address
-                        InfolistSection::make('Kontak')
-                            ->schema([
-                                TextEntry::make('nomor_telepon')->copyable()->icon('heroicon-m-phone'),
-                                TextEntry::make('email')->copyable()->icon('heroicon-m-envelope'),
-                            ])->columns(1),
-                        InfolistSection::make('Keluarga')
-                            ->schema([
-                                TextEntry::make('nama_ayah'),
-                                TextEntry::make('status_ayah')->badge(),
-                                TextEntry::make('nomor_telepon_ayah')->copyable()->icon('heroicon-m-phone'),
-                                TextEntry::make('pekerjaan_ayah'),
-                                TextEntry::make('daerahSambungAyah.nama')->label('Daerah Ayah'),
-                                TextEntry::make('nama_ibu'),
-                                TextEntry::make('status_ibu')->badge(),
-                                TextEntry::make('nomor_telepon_ibu')->copyable()->icon('heroicon-m-phone'),
-                                TextEntry::make('pekerjaan_ibu'),
-                                TextEntry::make('daerahSambungIbu.nama')->label('Daerah Ibu'),
-                                TextEntry::make('nama_wali'),
-                                TextEntry::make('hubungan_wali')->badge(),
-                                TextEntry::make('nomor_telepon_wali')->copyable()->icon('heroicon-m-phone'),
-                                TextEntry::make('pekerjaan_wali'),
-                                TextEntry::make('daerahSambungWali.nama')->label('Daerah Wali'),
-                            ])->columns(1),
-                    ])->grow(false), // Right column does not grow
-                ])->from('md') // Apply split layout from medium screens up
-            ]);
+                //BulkActionGroup::make([
+                    // DeleteBulkAction::make(),
+                    // Tables\Actions\ForceDeleteBulkAction::make(),
+                    // Tables\Actions\RestoreBulkAction::make(),
+                // ]),
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getRelations(): array
@@ -844,9 +859,14 @@ class CalonSantriResource extends Resource
         ];
     }
 
+    /**
+     * Eager load relasi untuk performa tabel.
+     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            // Tambahkan relasi yang dibutuhkan untuk kolom & filter
+            ->with(['gelombangPendaftaran.pendaftaran', 'daerahSambung'])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);

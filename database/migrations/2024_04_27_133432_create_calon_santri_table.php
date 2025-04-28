@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('nomor_telepon', 16);
             $table->string('email');
             $table->string('kewarganegaraan')->default('Indonesia');
-            $table->string('nomor_identitas_kependudukan')->nullable();
+            $table->string('nomor_induk_kependudukan')->nullable();
             $table->string('nomor_kartu_keluarga')->nullable();
             $table->string('nomor_passport')->nullable();
             $table->string('tempat_lahir')->nullable();

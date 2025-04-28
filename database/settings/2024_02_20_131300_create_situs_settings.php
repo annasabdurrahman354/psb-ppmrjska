@@ -6,7 +6,7 @@ return new class extends SettingsMigration
 {
     public function up(): void
     {
-        $this->migrator->add('situs.brand_name', 'Tes Calon Mubaligh');
+        $this->migrator->add('situs.brand_name', 'PPM Roudlotul Jannah Surakarta');
         $this->migrator->add('situs.brand_logo', 'sites/logo.png');
         $this->migrator->add('situs.brand_logoHeight', '3rem');
         $this->migrator->add('situs.site_active', true);

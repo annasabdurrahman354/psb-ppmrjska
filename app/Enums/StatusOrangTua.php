@@ -9,7 +9,6 @@ enum StatusOrangTua : string implements HasLabel, HasColor {
     case MENINGGAL = 'meninggal';
     case TIDAK_DIKETAHUI = 'tidak diketahui';
 
-
     public function getLabel(): ?string
     {
         return match ($this) {

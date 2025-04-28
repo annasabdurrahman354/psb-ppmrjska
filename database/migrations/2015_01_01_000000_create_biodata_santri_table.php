@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('nomor_induk_santri')->unique();
             $table->unsignedInteger('tahun_pendaftaran');
             $table->string('kewarganegaraan')->default('Indonesia');
-            $table->string('nomor_identitas_kependudukan')->nullable();
+            $table->string('nomor_induk_kependudukan')->nullable();
             $table->string('nomor_kartu_keluarga')->nullable();
             $table->string('nomor_passport')->nullable();
             $table->string('tempat_lahir')->nullable();

@@ -7,6 +7,7 @@ use App\Enums\JenisKelamin;
 use App\Enums\PendidikanTerakhir;
 use App\Enums\StatusKuliah;
 use App\Enums\GolonganDarah;
+use App\Enums\StatusOrangTua;
 use App\Enums\UkuranBaju;
 use App\Enums\StatusPernikahan;
 use App\Enums\StatusTinggal;
@@ -34,7 +35,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $nomor_telepon
  * @property string $email
  * @property string $kewarganegaraan
- * @property string|null $nomor_identitas_kependudukan
+ * @property string|null $nomor_induk_kependudukan
  * @property string|null $nomor_kartu_keluarga
  * @property string|null $nomor_passport
  * @property string|null $tempat_lahir
@@ -149,7 +150,7 @@ class CalonSantri extends Model
         'nomor_telepon',
         'email',
         'kewarganegaraan',
-        'nomor_identitas_kependudukan',
+        'nomor_induk_kependudukan',
         'nomor_kartu_keluarga',
         'nomor_passport',
         'tempat_lahir',
@@ -277,6 +278,8 @@ class CalonSantri extends Model
             'hubungan_wali' => HubunganWali::class,
             'mulai_mengaji' => MulaiMengaji::class,
             'bahasa_makna' => BahasaMakna::class,
+            'status_ayah' => StatusOrangTua::class,
+            'status_ibu' => StatusOrangTua::class,
 
             'created_at' => 'datetime',
             'updated_at' => 'datetime',

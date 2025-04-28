@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $nomor_induk_santri
  * @property int $tahun_pendaftaran
  * @property string $kewarganegaraan
- * @property string|null $nomor_identitas_kependudukan
+ * @property string|null $nomor_induk_kependudukan
  * @property string|null $nomor_kartu_keluarga
  * @property string|null $nomor_passport
  * @property string|null $tempat_lahir
@@ -138,7 +138,7 @@ class BiodataSantri extends Model
         'nomor_induk_santri',
         'tahun_pendaftaran',
         'kewarganegaraan',
-        'nomor_identitas_kependudukan',
+        'nomor_induk_kependudukan',
         'nomor_kartu_keluarga',
         'nomor_passport',
         'tempat_lahir',
