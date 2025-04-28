@@ -17,8 +17,9 @@ class DaerahResource extends Resource
     protected static ?string $pluralModelLabel = 'Daerah';
     protected static ?string $recordTitleAttribute = 'nama';
     protected static ?string $navigationLabel = 'Daerah';
-    protected static ?string $navigationGroup = 'Umum';
+    protected static ?string $navigationGroup = 'Database';
     protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
+    protected static ?int $navigationSort = 90;
 
     public static function form(Form $form): Form
     {
@@ -30,7 +31,7 @@ class DaerahResource extends Resource
     {
         return $table
             ->columns(Daerah::getColumns())
-            ->defaultSort('id_daerah')
+            ->defaultSort('nama')
             ->filters([
                 //
             ])

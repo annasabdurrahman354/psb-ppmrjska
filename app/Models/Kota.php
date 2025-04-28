@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -95,5 +97,17 @@ class Kota extends Model
             'id',                 // Local key on the starting model (Daerah)
             'user_id'             // Local key on the intermediate model (BiodataSantri) linking to User
         );
+    }
+
+    public static function getForm()
+    {
+        return [
+            Select::make('provinsi_id')
+                ->relationship('provinsi', 'nama')
+                ->searchable()
+                ->required(),
+            TextInput::make('nama')
+                ->required(),
+        ];
     }
 }

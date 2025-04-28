@@ -31,7 +31,7 @@ class SantriResource extends Resource
     protected static ?string $recordTitleAttribute = 'nama';
     protected static ?string $navigationLabel = 'Santri';
     protected static ?string $navigationIcon = 'heroicon-o-user';
-    protected static ?string $navigationGroup = 'Manajemen Santri';
+    protected static ?string $navigationGroup = 'Pengguna';
 
     public static function form(Form $form): Form
     {

@@ -40,8 +40,8 @@ class DokumenPendaftaranRelationManager extends RelationManager
 
                 // --- Field Upload Spatie Media Library ---
                 SpatieMediaLibraryFileUpload::make('template_dokumen_file') // Same temporary name as in wizard
-                ->label('Template Dokumen (Opsional)')
-                    ->collection('template') // Same collection name
+                    ->label('Template Dokumen (Opsional)')
+                    ->collection('dokumen_pendaftaran_template') // Same collection name
                     ->reorderable()
                     ->columnSpanFull()
                     ->helperText('Unggah file template jika dokumen ini memilikinya.'),
@@ -58,10 +58,9 @@ class DokumenPendaftaranRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('keterangan')
                     ->limit(50)
                     ->tooltip(fn (Model $record): ?string => $record->keterangan), // Show full text on hover
-                Tables\Columns\IconColumn::make('template_exists')
-                    ->label('Template?')
-                    ->boolean()
-                    ->getStateUsing(fn (Model $record): bool => $record->hasMedia('template_dokumen')), // Check if media exists
+                Tables\Columns\TextColumn::make('template')
+                    ->label('Template')
+                    ->getStateUsing(fn (Model $record) => $record->getFirstMediaUrl('dokumen_pendaftaran_template')), // Check if media exists
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

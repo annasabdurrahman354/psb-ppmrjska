@@ -16,8 +16,13 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class GuruResource extends Resource
 {
     protected static ?string $model = Guru::class;
-
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $slug = 'guru';
+    protected static ?string $modelLabel = 'Guru';
+    protected static ?string $pluralModelLabel = 'Guru';
+    protected static ?string $recordTitleAttribute = 'nama';
+    protected static ?string $navigationLabel = 'Guru';
+    protected static ?string $navigationIcon = 'heroicon-o-user';
+    protected static ?string $navigationGroup = 'Pengguna';
 
     public static function form(Form $form): Form
     {

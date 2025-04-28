@@ -23,9 +23,9 @@ class KecamatanResource extends Resource
     protected static ?string $recordTitleAttribute = 'nama';
 
     protected static ?string $navigationLabel = 'Kecamatan';
-    protected static ?string $navigationGroup = 'Manajemen Database';
+    protected static ?string $navigationGroup = 'Database';
     protected static ?string $navigationIcon = 'heroicon-o-globe-europe-africa';
-    //protected static ?int $navigationSort = 73;
+    protected static ?int $navigationSort = 93;
 
     public static function form(Form $form): Form
     {

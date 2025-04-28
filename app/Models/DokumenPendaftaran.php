@@ -86,8 +86,7 @@ class DokumenPendaftaran extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
-        $this
-            ->addMediaCollection('dokumen_pendaftaran_template')
+        $this->addMediaCollection('dokumen_pendaftaran_template')
             ->singleFile();
     }
 }

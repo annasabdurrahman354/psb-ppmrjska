@@ -23,9 +23,9 @@ class KelurahanResource extends Resource
     protected static ?string $recordTitleAttribute = 'nama';
 
     protected static ?string $navigationLabel = 'Kelurahan';
-    protected static ?string $navigationGroup = 'Manajemen Database';
+    protected static ?string $navigationGroup = 'Database';
     protected static ?string $navigationIcon = 'heroicon-o-globe-europe-africa';
-    protected static ?int $navigationSort = 74;
+    protected static ?int $navigationSort = 94;
 
     public static function form(Form $form): Form
     {

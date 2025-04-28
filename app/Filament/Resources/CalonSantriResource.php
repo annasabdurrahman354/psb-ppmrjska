@@ -19,14 +19,18 @@ use App\Filament\Resources\CalonSantriResource\Pages;
 use App\Filament\Resources\CalonSantriResource\RelationManagers; // If you have relation managers
 use App\Models\CalonSantri;
 use App\Models\Daerah;
+use App\Models\DokumenPendaftaran;
+use App\Models\GelombangPendaftaran;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Kota;
 use App\Models\Provinsi;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Fieldset;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -43,6 +47,7 @@ use Filament\Infolists\Components\Split as InfolistSplit;
 use Filament\Infolists\Components\SpatieMediaLibraryImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
@@ -79,7 +84,8 @@ class CalonSantriResource extends Resource
                             ->relationship('gelombangPendaftaran', 'nomor_gelombang') // Asumsi relasi ada dan menampilkan ID atau field lain
                             ->required()
                             ->preload()
-                            ->searchable(),
+                            ->searchable()
+                            ->live(),
                     ]),
 
                 Section::make('Data Diri')
@@ -482,6 +488,86 @@ class CalonSantriResource extends Resource
                             ->preload()
                             ->visible(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
                     ]),
+
+                Section::make('Upload Dokumen Persyaratan')
+                    ->description('Unggah semua dokumen yang diperlukan sesuai daftar.')
+                    ->collapsible() // Opsional: buat section bisa dilipat
+                    ->schema(function(Get $get): array { // Gunakan closure agar bisa akses $get
+                        $gelombangId = $get('gelombang_pendaftaran_id');
+                        $fields = [];
+
+                        if (!$gelombangId) {
+                            // Jika gelombang belum dipilih, tampilkan placeholder
+                            $fields[] = Placeholder::make('pilih_gelombang_dulu')
+                                ->content('Silakan pilih Gelombang Pendaftaran terlebih dahulu untuk melihat daftar dokumen.');
+                            return $fields;
+                        }
+
+                        // Ambil Pendaftaran ID dari Gelombang Pendaftaran
+                        $gelombang = GelombangPendaftaran::find($gelombangId);
+                        if (!$gelombang || !$gelombang->pendaftaran_id) {
+                            $fields[] = Placeholder::make('pendaftaran_tidak_valid')
+                                ->content('Gelombang Pendaftaran tidak valid atau tidak terhubung ke Pendaftaran.');
+                            return $fields;
+                        }
+                        $pendaftaranId = $gelombang->pendaftaran_id;
+
+                        // Fetch DokumenPendaftaran yang relevan berdasarkan pendaftaran_id
+                        // Anda mungkin ingin menambahkan ->with('media') jika cek template dilakukan di sini
+                        $requiredDokumenPendaftaran = DokumenPendaftaran::where('pendaftaran_id', $pendaftaranId)->get();
+
+                        if ($requiredDokumenPendaftaran->isEmpty()) {
+                            $fields[] = Placeholder::make('dokumen_kosong')
+                                ->content('Tidak ada dokumen persyaratan yang perlu diunggah untuk gelombang ini.');
+                            return $fields;
+                        }
+
+                        // Buat field upload untuk setiap dokumen yang diperlukan
+                        foreach ($requiredDokumenPendaftaran as $dokumen) {
+                            // Buat nama field yang unik, misalnya menggunakan ID DokumenPendaftaran
+                            // Nama ini akan digunakan di backend saat menyimpan
+                            $fieldName = 'dokumen_' . $dokumen->id;
+
+                            $uploadField = SpatieMediaLibraryFileUpload::make($fieldName)
+                                ->label($dokumen->nama) // Nama dokumen sebagai label
+                                ->collection('dokumen_calon_santri_berkas') // Collection tujuan pada model DokumenCalonSantri
+                                ->required() // Wajib diisi
+                                ->helperText($dokumen->keterangan) // Keterangan sebagai helper text
+                                ->maxSize(5120) // Contoh: Batasi ukuran file 5MB
+                                ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png']); // Contoh: Batasi tipe file
+
+                            // Tambahkan aksi download jika DokumenPendaftaran memiliki template
+                            // Pastikan model DokumenPendaftaran sudah di-load dengan relasi media jika mengeceknya di sini
+                            // atau gunakan $dokumen->hasMedia() jika model sudah di-retrieve dengan benar.
+                            try {
+                                $templateMedia = $dokumen->getFirstMediaUrl('dokumen_pendaftaran_template');
+                                if ($templateMedia) {
+                                    $uploadField = $uploadField->hintAction(
+                                        Action::make('download_template_' . $dokumen->id)
+                                            ->label('Unduh Template')
+                                            ->icon('heroicon-o-arrow-down-tray')
+                                            ->url($templateMedia) // Dapatkan URL download
+                                            ->openUrlInNewTab()
+                                            ->color('gray') // Opsional: styling
+                                            ->tooltip($templateMedia)
+                                    );
+                                }
+                            } catch (\Exception $e) {
+                                // Handle error jika media tidak ditemukan atau ada masalah lain
+                                Notification::make('dokumen_pendaftaran_error')
+                                    ->title('Terjadi Kesalahan!')
+                                    ->danger()
+                                    ->body('Dokumen tidak ditemukan.');
+                            }
+
+
+                            $fields[] = $uploadField;
+                        }
+
+                        return $fields;
+
+                    })
+                    ->columns(1) // Atur layout kolom sesuai kebutuhan, misal 1 atau 2
             ]);
     }
 

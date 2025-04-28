@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -83,5 +84,13 @@ class Provinsi extends Model
             'id',                 // Local key on the starting model (Daerah)
             'user_id'             // Local key on the intermediate model (BiodataSantri) linking to User
         );
+    }
+
+    public static function getForm()
+    {
+        return [
+            TextInput::make('nama')
+                ->required(),
+        ];
     }
 }

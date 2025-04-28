@@ -6,7 +6,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PendaftaranResource\Pages;
 use App\Filament\Resources\PendaftaranResource\RelationManagers;
 use App\Models\Pendaftaran;
-use Closure; // <-- Tambahkan use statement ini
+use Closure;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -113,7 +113,7 @@ class PendaftaranResource extends Resource
                                         ->columnSpan(2),
                                     SpatieMediaLibraryFileUpload::make('template_dokumen_file')
                                         ->label('Template Dokumen (Opsional)')
-                                        ->collection('template')
+                                        ->collection('dokumen_pendaftaran_template')
                                         ->reorderable()
                                         ->columnSpanFull()
                                         ->helperText('Unggah file template jika dokumen ini memilikinya (misal: form surat pernyataan).'),

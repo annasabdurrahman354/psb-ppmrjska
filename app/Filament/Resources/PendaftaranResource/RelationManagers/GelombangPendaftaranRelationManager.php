@@ -85,9 +85,9 @@ class GelombangPendaftaranRelationManager extends RelationManager
                     ->dateTime()
                     ->label('Akhir')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('pendaftar_count')
+                Tables\Columns\TextColumn::make('calon_santri_count')
                     ->label('Jumlah Pendaftar')
-                    ->counts('pendaftar')
+                    ->counts('calonSantri')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('link_grup')
                     ->url(fn (Model $record): ?string => $record->link_grup)

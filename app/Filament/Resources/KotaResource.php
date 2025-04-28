@@ -23,9 +23,9 @@ class KotaResource extends Resource
     protected static ?string $recordTitleAttribute = 'nama';
 
     protected static ?string $navigationLabel = 'Kota';
-    protected static ?string $navigationGroup = 'Manajemen Database';
+    protected static ?string $navigationGroup = 'Database';
     protected static ?string $navigationIcon = 'heroicon-o-globe-europe-africa';
-    protected static ?int $navigationSort = 72;
+    protected static ?int $navigationSort = 92;
 
     public static function form(Form $form): Form
     {

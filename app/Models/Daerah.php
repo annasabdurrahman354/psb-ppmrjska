@@ -103,7 +103,9 @@ class Daerah extends Model
         return [
             Forms\Components\TextInput::make('nama')
                 ->label('Nama Daerah')
-                ->required(),
+                ->required()
+                ->formatStateUsing(fn (string $state): string => proper($state))
+                ->dehydrateStateUsing(fn (string $state): string => proper($state)),
 
             Forms\Components\TextInput::make('provinsi')
                 ->label('Nama Provinsi')
@@ -119,15 +121,11 @@ class Daerah extends Model
     public static function getColumns(): array
     {
         return [
-            Tables\Columns\TextColumn::make('id')
-                ->label('ID')
-                ->sortable()
-                ->searchable(),
-
             Tables\Columns\TextColumn::make('nama')
                 ->label('Nama Daerah')
                 ->sortable()
-                ->searchable(),
+                ->searchable()
+                ->formatStateUsing(fn (string $state) => proper($state)),
 
             Tables\Columns\TextColumn::make('provinsi')
                 ->label('Nama Provinsi')

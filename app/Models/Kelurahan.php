@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,5 +71,17 @@ class Kelurahan extends Model
     public function kecamatan(): BelongsTo
     {
         return $this->belongsTo(Kecamatan::class, 'kecamatan_id');
+    }
+
+    public static function getForm()
+    {
+        return [
+            Select::make('kecamatan_id')
+                ->relationship('kecamatan', 'nama')
+                ->searchable()
+                ->required(),
+            TextInput::make('nama')
+                ->required(),
+        ];
     }
 }
