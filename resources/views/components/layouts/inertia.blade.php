@@ -6,14 +6,16 @@
         <meta name="application-name" content="{{ config('app.name') }}" />
         <meta name="csrf-token" content="{{ csrf_token() }}" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
         <title>{{ config('app.name') }}</title>
 
-        @vite('resources/js/react.jsx')
+        @routes
+        @viteReactRefresh
+        @vite(['resources/js/react.tsx', "resources/js/pages/{$page['component']}.tsx"])
         @inertiaHead
     </head>
 
-    <body class="antialiased">
+    <body class="font-sans antialiased">
         @inertia
     </body>
 </html>
