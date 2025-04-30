@@ -1,16 +1,15 @@
 <?php
 
-use App\Http\Controllers\Inertia\PendaftaranCalonSantriController;
+use App\Http\Controllers\Inertia\PendaftaranController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/pendaftaran');
 });
 
+Route::get('/pendaftaran/create', \App\Livewire\Pendaftaran\PendaftaranCreate::class)->name('pendaftaran.create');
 
-// Example for displaying the form (HTTP GET request)
-Route::get('/pendaftaran/santri', [PendaftaranCalonSantriController::class, 'create']);
-// Example for handling the form submission (HTTP POST request)
-Route::post('/pendaftaran/santri', [PendaftaranCalonSantriController::class, 'store']);
-// Example for the success page (HTTP GET request)
-Route::get('/pendaftaran/sukses', [PendaftaranCalonSantriController::class, 'sukses']);
+Route::get('/pendaftaran/', [PendaftaranController::class, 'index'])->name('pendaftaran.index');
+Route::get('/pendaftaran/finish/{id}', [PendaftaranController::class, 'finish'])->name('pendaftaran.finish');
+
+

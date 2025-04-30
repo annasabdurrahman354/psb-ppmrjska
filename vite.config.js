@@ -14,7 +14,7 @@ export default defineConfig({
                 'resources/js/react.tsx',
                 'resources/css/filament/admin/theme.css'
             ],
-            refresh: true,
+            refresh: false,
         }),
         react(),
     ],

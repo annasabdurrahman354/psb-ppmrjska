@@ -15,7 +15,7 @@ return new class extends Migration
 
         Schema::create('pendaftaran', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->unsignedInteger('tahun_pendaftaran');
+            $table->unsignedInteger('tahun');
             $table->json('kontak_panitia');
             $table->json('kontak_pengurus');
             $table->timestamps();

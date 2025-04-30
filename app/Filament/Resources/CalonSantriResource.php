@@ -95,8 +95,8 @@ class CalonSantriResource extends Resource
                         ->options(
                             // Ambil semua pendaftaran, jadikan tahun sebagai label
                             Pendaftaran::query()
-                                ->orderBy('tahun_pendaftaran', 'desc') // Urutkan dari terbaru
-                                ->pluck('tahun_pendaftaran', 'id')
+                                ->orderBy('tahun', 'desc') // Urutkan dari terbaru
+                                ->pluck('tahun', 'id')
                                 ->mapWithKeys(fn ($tahun, $id) => [$id => $tahun]) // Format label
                         )
                         ->searchable()
@@ -678,7 +678,7 @@ class CalonSantriResource extends Resource
                     ->label('Nama Lengkap')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('gelombangPendaftaran.pendaftaran.tahun_pendaftaran')
+                TextColumn::make('gelombangPendaftaran.pendaftaran.tahun')
                     ->label('Tahun Daftar')
                     ->sortable()
                     ->searchable()
@@ -802,13 +802,13 @@ class CalonSantriResource extends Resource
                     ->label('Tahun Pendaftaran')
                     ->options(
                         Pendaftaran::query()
-                            ->orderBy('tahun_pendaftaran', 'desc')
-                            ->pluck('tahun_pendaftaran', 'tahun_pendaftaran')
+                            ->orderBy('tahun', 'desc')
+                            ->pluck('tahun', 'tahun')
                     )
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['value'],
-                            fn (Builder $query, $tahun): Builder => $query->whereHas('gelombangPendaftaran.pendaftaran', fn(Builder $q) => $q->where('tahun_pendaftaran', $tahun))
+                            fn (Builder $query, $tahun): Builder => $query->whereHas('gelombangPendaftaran.pendaftaran', fn(Builder $q) => $q->where('tahun', $tahun))
                         );
                     }),
 

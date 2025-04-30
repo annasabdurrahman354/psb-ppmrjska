@@ -31,7 +31,7 @@ use Illuminate\Validation\Rules\Enum;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class PendaftaranCalonSantriController extends Controller
+class PendaftaranController extends Controller
 {
     /**
      * Display the registration form page.
@@ -43,7 +43,7 @@ class PendaftaranCalonSantriController extends Controller
         $currentYear = $now->year;
 
         // Find the Pendaftaran for the current year
-        $pendaftaran = Pendaftaran::where('tahun_pendaftaran', $currentYear)->first();
+        $pendaftaran = Pendaftaran::where('tahun', $currentYear)->first();
 
         if (!$pendaftaran) {
             return Inertia::render('Pendaftaran/TidakDibuka', [
@@ -98,7 +98,7 @@ class PendaftaranCalonSantriController extends Controller
 
         return Inertia::render('Pendaftaran/Create', [
             'gelombangPendaftaranId' => $gelombangAktif->id,
-            'tahunPendaftaran' => $pendaftaran->tahun_pendaftaran,
+            'tahunPendaftaran' => $pendaftaran->tahun,
             'requiredDokumen' => $requiredDokumen,
             'options' => $options,
             'statusOrangTuaHidup' => StatusOrangTua::HIDUP->value,
@@ -126,23 +126,22 @@ class PendaftaranCalonSantriController extends Controller
             'tempat_lahir' => ['required', 'string', 'max:255'],
             'tanggal_lahir' => ['required', 'date'],
             'kewarganegaraan' => ['required', new Enum(Negara::class)],
-            'nomor_induk_kependudukan' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'digits:16'],
-            'nomor_kartu_keluarga' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'string', 'max:255'], // Adjust validation as needed
-            'nomor_passport' => ['required_unless:kewarganegaraan,Indonesia', 'nullable', 'string', 'max:255'],
+            'nomor_induk_kependudukan' => ['required_if:kewarganegaraan,Indonesia', 'digits:16'],
+            'nomor_kartu_keluarga' => ['required_if:kewarganegaraan,Indonesia', 'string', 'max:255'], // Adjust validation as needed
+            'nomor_passport' => ['required_unless:kewarganegaraan,Indonesia', 'string', 'max:255'],
 
             // Alamat Indonesia
-            'alamat' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'string'],
-            'rt' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'string', 'max:5'],
-            'rw' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'string', 'max:5'],
-            'provinsi_id' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'integer', 'exists:provinsi,id'],
-            'kota_id' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'integer', Rule::exists('kota', 'id')->where('provinsi_id', $request->input('provinsi_id'))],
-            'kecamatan_id' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'integer', Rule::exists('kecamatan', 'id')->where('kota_id', $request->input('kota_id'))],
-            'kelurahan_id' => ['required_if:kewarganegaraan,Indonesia', 'nullable', 'integer', Rule::exists('kelurahan', 'id')->where('kecamatan_id', $request->input('kecamatan_id'))],
+            'alamat' => ['string'],
+            'rt' => ['required_if:kewarganegaraan,Indonesia', 'string', 'max:5'],
+            'rw' => ['required_if:kewarganegaraan,Indonesia', 'string', 'max:5'],
+            'provinsi_id' => ['required_if:kewarganegaraan,Indonesia', 'integer', 'exists:provinsi,id'],
+            'kota_id' => ['required_if:kewarganegaraan,Indonesia', 'integer', Rule::exists('kota', 'id')->where('provinsi_id', $request->input('provinsi_id'))],
+            'kecamatan_id' => ['required_if:kewarganegaraan,Indonesia', 'integer', Rule::exists('kecamatan', 'id')->where('kota_id', $request->input('kota_id'))],
+            'kelurahan_id' => ['required_if:kewarganegaraan,Indonesia', 'integer', Rule::exists('kelurahan', 'id')->where('kecamatan_id', $request->input('kecamatan_id'))],
 
             // Alamat Non-Indonesia
-            'alamat_non_indo' => ['required_unless:kewarganegaraan,Indonesia', 'nullable', 'string'],
-            'city' => ['required_unless:kewarganegaraan,Indonesia', 'nullable', 'string', 'max:255'],
-            'state_province' => ['required_unless:kewarganegaraan,Indonesia', 'nullable', 'string', 'max:255'],
+            'city' => ['required_unless:kewarganegaraan,Indonesia', 'string', 'max:255'],
+            'state_province' => ['required_unless:kewarganegaraan,Indonesia', 'string', 'max:255'],
             'kode_pos' => ['required', 'string', 'max:10'], // Make kode_pos required for both cases
 
             // Informasi Sambung
@@ -152,7 +151,7 @@ class PendaftaranCalonSantriController extends Controller
 
             // Informasi Pondok & Pendidikan
             'status_mubaligh' => ['required', 'boolean'],
-            'pernah_mondok' => ['required', 'boolean', Rule::acceptedIf($request->input('status_mubaligh') == true)],
+            'pernah_mondok' => ['required', 'boolean'],
             'nama_pondok_sebelumnya' => ['required_if:pernah_mondok,true', 'nullable', 'string', 'max:255'],
             'lama_mondok_sebelumnya' => ['required_if:pernah_mondok,true', 'nullable', 'integer', 'min:1'],
             'pendidikan_terakhir' => ['required', new Enum(PendidikanTerakhir::class)],
@@ -335,10 +334,215 @@ class PendaftaranCalonSantriController extends Controller
     }
 
     /**
+     * Display the registration index page.
+     *
+     * @return Response
+     */
+    public function index(): Response
+    {
+        $tahunSekarang = Carbon::now()->year;
+        $sekarang = Carbon::now();
+
+        // Ambil data pendaftaran untuk tahun ini beserta relasinya
+        $pendaftaran = Pendaftaran::with([
+            'gelombangPendaftaran' => function ($query) {
+                $query->orderBy('nomor_gelombang', 'asc'); // Urutkan gelombang
+            },
+            'dokumenPendaftaran', // Ensure media relation is loaded if needed for URL
+            'indikatorPenilaian'
+        ])
+            ->where('tahun', $tahunSekarang)
+            ->first();
+
+        // Default status pendaftaran
+        $statusPendaftaran = 'belum_dibuka'; // belum_dibuka, menunggu_pembukaan, sedang_dibuka, menunggu_gelombang_berikutnya, ditutup
+        $gelombangAktifId = null;
+        $pesanStatus = "Mohon maaf, pendaftaran calon santri baru untuk tahun {$tahunSekarang} belum dibuka. Silakan cek kembali nanti.";
+        $tombolAksiTeks = null;
+        $pendaftaranData = null; // Initialize as null
+
+        if ($pendaftaran) {
+            $gelombangs = $pendaftaran->gelombangPendaftaran;
+            $gelombangAktif = null;
+            $adaGelombangMendatang = false;
+            $semuaGelombangTerlewat = true;
+
+            foreach ($gelombangs as $gelombang) {
+                $awal = Carbon::parse($gelombang->awal_pendaftaran);
+                $akhir = Carbon::parse($gelombang->akhir_pendaftaran);
+
+                // Cek apakah ada gelombang yang sedang aktif
+                if ($sekarang->isBetween($awal, $akhir)) {
+                    $gelombangAktif = $gelombang;
+                    break; // Langsung keluar loop jika ada yang aktif
+                }
+
+                // Cek apakah ada gelombang di masa depan
+                if ($awal->isAfter($sekarang)) {
+                    $adaGelombangMendatang = true;
+                }
+
+                // Cek apakah semua gelombang sudah terlewat
+                if ($akhir->isAfter($sekarang)) {
+                    $semuaGelombangTerlewat = false;
+                }
+            }
+
+            // Logika penentuan status
+            if ($gelombangAktif) {
+                $statusPendaftaran = 'sedang_dibuka';
+                $gelombangAktifId = $gelombangAktif->id;
+                $pesanStatus = "Pendaftaran Gelombang {$gelombangAktif->nomor_gelombang} sedang dibuka. Ayo bergabung!";
+                $tombolAksiTeks = "Daftar Sekarang!";
+            } elseif ($adaGelombangMendatang && !$gelombangAktif) {
+                $gelombangPertama = $gelombangs->first();
+                if ($gelombangPertama && $sekarang->isBefore(Carbon::parse($gelombangPertama->awal_pendaftaran))) {
+                    $statusPendaftaran = 'menunggu_pembukaan';
+                    $pesanStatus = "Pendaftaran akan segera dibuka. Persiapkan dirimu untuk menjadi bagian dari keluarga besar PPM Roudlotul Jannah!";
+                } else {
+                    $statusPendaftaran = 'menunggu_gelombang_berikutnya';
+                    $pesanStatus = "Pendaftaran gelombang saat ini telah ditutup. Nantikan pembukaan gelombang berikutnya!";
+                }
+                $tombolAksiTeks = "Lihat Jadwal";
+            } elseif ($semuaGelombangTerlewat) {
+                $statusPendaftaran = 'ditutup';
+                $pesanStatus = "Mohon maaf, seluruh periode pendaftaran untuk tahun {$tahunSekarang} telah ditutup. Untuk informasi lebih lanjut, silakan hubungi panitia.";
+                $tombolAksiTeks = "Hubungi Panitia";
+            } elseif ($gelombangs->isEmpty()) {
+                $statusPendaftaran = 'belum_dibuka';
+                $pesanStatus = "Informasi gelombang pendaftaran untuk tahun {$tahunSekarang} belum tersedia. Silakan cek kembali nanti.";
+            }
+
+            // --- MODIFICATION START ---
+            // Check if the relation is loaded before attempting to modify it
+            if ($pendaftaran->relationLoaded('dokumenPendaftaran')) {
+                // Use transform to modify the collection in place
+                $pendaftaran->dokumenPendaftaran->transform(function ($dokumen) {
+                    // Add the 'url' attribute by calling getFirstMediaUrl
+                    // Ensure the DokumenPendaftaran model uses Spatie\MediaLibrary\HasMedia
+                    // and has the appropriate media collection defined.
+                    $dokumen->url = $dokumen->getFirstMediaUrl('dokumen_pendaftaran_template');
+                    return $dokumen; // Return the modified model
+                });
+            }
+            // --- MODIFICATION END ---
+
+            // Convert the modified Pendaftaran object to an array for Inertia
+            // This ensures the added 'url' attribute is included in the JSON response
+            $pendaftaranData = $pendaftaran->toArray();
+
+        } else {
+            // Status remains 'belum_dibuka' as set initially
+            $pesanStatus = "Mohon maaf, pendaftaran calon santri baru untuk tahun {$tahunSekarang} belum dibuka atau informasi belum tersedia. Silakan cek kembali nanti.";
+        }
+
+
+        // Daftar Kampus (Hardcoded sesuai permintaan)
+        $kampusSekitar = [
+            'Kota Surakarta (PTN)' => [
+                'Universitas Sebelas Maret Surakarta (UNS)',
+                'Institut Seni Indonesia (ISI) Surakarta',
+                'Politeknik Kesehatan Kemenkes Surakarta (Poltekkes Solo)',
+                'Akademi Komunitas Industri Tekstil dan Produk Tekstil (AK-Tekstil) Solo',
+                'Universitas Terbuka (UT) Surakarta',
+            ],
+            'Kota Surakarta (PTS)' => [
+                'Universitas Slamet Riyadi (UNISRI)',
+                'Universitas Setia Budi (USB)',
+                'Universitas Kristen Surakarta (UKS)',
+                'Universitas Islam Batik (UNIBA) Surakarta',
+                'Universitas Tunas Pembangunan (UTP) Surakarta',
+                'Universitas \'Aisyiyah Surakarta (AISKA)',
+                'Universitas Duta Bangsa (UDB) Surakarta',
+                'Universitas Sahid (USAHID) Surakarta',
+                'Universitas Nahdlatul Ulama (UNU) Surakarta',
+                'Politeknik ATMI Surakarta',
+                'Politeknik Indonusa Surakarta (Polinus)',
+                'Politeknik Pratama Mulia (POLITAMA)',
+                'Politeknik Santo Paulus Surakarta',
+                'Politeknik Harapan Bangsa Surakarta (Polnas)',
+                'Universitas BSI Kampus Surakarta',
+                'Akademi Pariwisata Mandala Bhakti Surakarta',
+                'Akademi Bahasa Asing R.A. Kartini',
+                'Akademi Seni Mangkunegaran Surakarta 1 (ASGA)',
+                'Akademi Pelayaran Nasional (APN) Surakarta',
+                'Akademi Keperawatan (AKPER) Patria Husada Surakarta',
+                'AKBARA SURAKARTA',
+                'STMIK Adi Unggul Bhirawa (AUB) Surakarta',
+                'Sekolah Tinggi Ilmu Ekonomi (STIE) Surakarta',
+                'Sekolah Tinggi Teknologi Warga (STTW) Surakarta',
+                'Stikes Mambaul Ulum Surakarta (STIKESMUS)',
+                'Institut Islam Mamba\'ul \'Ulum Surakarta',
+                'Institut Teknologi Sains dan Kesehatan (ITS) PKU Muhammadiyah Surakarta',
+            ],
+            'Kabupaten Sukoharjo' => [
+                'Universitas Muhammadiyah Surakarta (UMS)',
+                'UIN Raden Mas Said Surakarta',
+                'Universitas Veteran Bangun Nusantara (UNIVET BANTARA) Sukoharjo',
+                'Politeknik Kesehatan Bhakti Mulia',
+                'Institut Teknologi Bisnis AAS Indonesia',
+                'Sekolah Tinggi Ilmu Ekonomi (STIE) Surakarta', // Disebutkan lagi
+                'Sekolah Tinggi Ilmu Manajemen (STIM) Surakarta',
+                'Akademi Teknik Warga (ATW) Surakarta',
+                'Akademi Pelayaran Nasional (APN) Surakarta Kampus 1',
+                'Universitas Sugeng Hartono (USH)',
+                'Akademi Seni dan Desain Indonesia (Asdi)',
+            ],
+            'Kabupaten Karanganyar' => [
+                'Universitas Surakarta (UNSA)',
+                'Universitas Muhammadiyah Karanganyar (UMUKA)',
+                'Institut Teknologi dan Bisnis Kristen Bukit Pengharapan',
+                'STIKES Mitra Husada Karanganyar',
+                'STIKES Tujuh Belas',
+                'Akademi Komunitas Adiyasa Karanganyar',
+            ]
+        ];
+
+        // Data lain untuk view
+        $jargon = "Sarjana yang Mubaligh, Profesional, Religius";
+        $mengapaMondok = "Menjadi mahasiswa sekaligus santri membuka pintu kesuksesan dunia dan akhirat. Di PPM Roudlotul Jannah, kamu tidak hanya mengejar gelar sarjana, tapi juga memperdalam ilmu agama, membentuk karakter mulia, dan membangun jaringan persaudaraan yang kuat.";
+
+        return Inertia::render('Pendaftaran/Index', [
+            'pendaftaran' => $pendaftaranData, // Pass the modified data (or null)
+            'statusPendaftaran' => $statusPendaftaran,
+            'pesanStatus' => $pesanStatus,
+            'tombolAksiTeks' => $tombolAksiTeks,
+            'gelombangAktifId' => $gelombangAktifId,
+            'kampusSekitar' => $kampusSekitar,
+            'jargon' => $jargon,
+            'mengapaMondok' => $mengapaMondok,
+            // Use optional chaining or check if $pendaftaranData is null before accessing contact
+            'kontakPanitia' => $pendaftaranData['kontak_panitia'] ?? [],
+            // Dokumen and Indikator are now included within $pendaftaranData if it's not null
+        ]);
+    }
+
+    /**
      * Display the success page after registration.
      */
-    public function sukses()
+    /**
+     * Show the finish page with the group link.
+     *
+     * Uses Route Model Binding to automatically find the GelombangPendaftaran
+     * or throw a 404 error if not found.
+     *
+     * @param GelombangPendaftaran $gelombangPendaftaran The GelombangPendaftaran instance resolved from the {id} route parameter.
+     * @return \Inertia\Response
+     */
+    public function finish($id) // <-- Type-hint the model
     {
-        return Inertia::render('Pendaftaran/Sukses');
+
+        // Laravel automatically fetched the GelombangPendaftaran using the {id} from the route.
+        // If the ID doesn't exist, Laravel will automatically return a 404 Not Found error.
+
+        $calonSantri = CalonSantri::find($id);
+        if (!$calonSantri) abort(404);
+        // Get the link_grup attribute from the fetched model
+        $pendaftaran = GelombangPendaftaran::find($calonSantri->gelombang_pendaftaran_id);
+
+        // Render the Inertia view and pass the link_grup as a prop
+        return Inertia::render('Pendaftaran/Finish', [
+            'link_grup' => $pendaftaran->link_grup ?? null
+        ]);
     }
 }

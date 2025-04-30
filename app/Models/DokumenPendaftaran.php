@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -66,6 +67,13 @@ class DokumenPendaftaran extends Model implements HasMedia
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
+    }
+
+    protected function url(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->getFirstMediaUrl('dokumen_pendaftaran_template'),
+        );
     }
 
     /**

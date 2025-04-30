@@ -45,7 +45,7 @@ class PendaftaranResource extends Resource
                         ->description('Masukkan tahun pendaftaran dan detail kontak.')
                         ->schema([
                             // ... (Konten Step 1 tidak berubah) ...
-                            Forms\Components\TextInput::make('tahun_pendaftaran')
+                            Forms\Components\TextInput::make('tahun')
                                 ->required()
                                 ->numeric()
                                 ->minValue(now()->year - 1)
@@ -237,7 +237,7 @@ class PendaftaranResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('tahun_pendaftaran')
+                Tables\Columns\TextColumn::make('tahun')
                     ->label('Tahun Pendaftaran')
                     ->searchable()
                     ->sortable(),

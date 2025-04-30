@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Represents a registration period or event.
  *
  * @property string $id // ULID
- * @property int $tahun_pendaftaran
+ * @property int $tahun
  * @property array $kontak_panitia // Cast from JSON
  * @property array $kontak_pengurus // Cast from JSON
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -44,7 +44,7 @@ class Pendaftaran extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'tahun_pendaftaran',
+        'tahun',
         'kontak_panitia',
         'kontak_pengurus',
     ];
@@ -68,7 +68,7 @@ class Pendaftaran extends Model
     protected function casts(): array
     {
         return [
-            'tahun_pendaftaran' => 'integer',
+            'tahun' => 'integer',
             'kontak_panitia' => 'array', // Cast JSON to array
             'kontak_pengurus' => 'array', // Cast JSON to array
             'created_at' => 'datetime',

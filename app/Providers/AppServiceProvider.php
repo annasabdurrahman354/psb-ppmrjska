@@ -5,6 +5,8 @@ namespace App\Providers;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Colors\Color;
+use Filament\Support\Facades\FilamentColor;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
@@ -49,5 +51,14 @@ class AppServiceProvider extends ServiceProvider
         };
 
         Vite::prefetch(concurrency: 3);
+
+        FilamentColor::register([
+            'danger' => Color::Red,
+            'gray' => Color::Zinc,
+            'info' => Color::Blue,
+            'primary' => Color::Green,
+            'success' => Color::Lime,
+            'warning' => Color::Orange,
+        ]);
     }
 }

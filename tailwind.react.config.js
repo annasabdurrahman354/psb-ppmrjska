@@ -3,15 +3,14 @@
 module.exports = {
     darkMode: ["class"],
     // Prefix Inertia classes to avoid conflicts (OPTIONAL BUT RECOMMENDED)
-    // prefix: 'inrt-', // Example prefix
+    //prefix: 'inrt-',
     content: [
-        "./resources/views/app.blade.php", // Your Inertia root Blade view
+        "./resources/views/components/layouts/inertia.blade.php", // Your Inertia root Blade view
         "./resources/js/**/*.jsx",
         "./resources/js/**/*.tsx",
         // Add other paths where your Inertia components/pages live
     ],
     theme: {
-        // Keep the theme extension from your original file
         extend: {
             colors: {
                 background: 'hsl(var(--background))',
