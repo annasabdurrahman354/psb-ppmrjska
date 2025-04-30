@@ -70,7 +70,7 @@ class PendaftaranResource extends Resource
                                         ->defaultItems(1)
                                         ->collapsible()
                                         ->itemLabel(fn (array $state): ?string => $state['nama'] ?? null)
-                                        ->minItems(2),
+                                        ->minItems(1),
                                 ]),
 
                             Forms\Components\Section::make('Kontak Pengurus')
@@ -123,7 +123,7 @@ class PendaftaranResource extends Resource
                                 ->columns(2)
                                 ->collapsible()
                                 ->itemLabel(fn (array $state): ?string => $state['nama'] ?? null)
-                                ->minItems(2),
+                                ->minItems(1),
                         ]),
 
                     // Step 3: Indikator Penilaian (Dimodifikasi)

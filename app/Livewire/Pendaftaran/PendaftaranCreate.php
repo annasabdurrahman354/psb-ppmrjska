@@ -193,7 +193,7 @@ class PendaftaranCreate extends Component implements HasForms
                                 ->schema([
                                     // Alamat Indonesia
                                     Textarea::make('alamat')
-                                        ->label('Alamat Lengkap (Indonesia)')
+                                        ->label('Alamat')
                                         ->rows(3)
                                         ->visible(fn (Get $get): bool => $get('kewarganegaraan') === Negara::INDONESIA->value)
                                         ->required(fn (Get $get): bool => $get('kewarganegaraan') === Negara::INDONESIA->value),
@@ -343,7 +343,7 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->searchable()
                                         ->required(),
                                     TextInput::make('jurusan')
-                                        ->label('Jurusan'),
+                                        ->label('Jurusan Pendidikan Terakhir'),
                                     TextInput::make('universitas')
                                         ->label('Universitas')
                                         ->required(), // Make conditional based on pendidikan?

@@ -1,27 +1,27 @@
 {
-  "_createLucideIcon-DO3STpyk.js": {
-    "file": "assets/createLucideIcon-DO3STpyk.js",
+  "_createLucideIcon-D__tKgjQ.js": {
+    "file": "assets/createLucideIcon-D__tKgjQ.js",
     "name": "createLucideIcon",
     "imports": [
       "resources/js/react.tsx"
     ]
   },
-  "_download-Dwq3tvoT.js": {
-    "file": "assets/download-Dwq3tvoT.js",
+  "_download-CZflCKhl.js": {
+    "file": "assets/download-CZflCKhl.js",
     "name": "download",
     "imports": [
-      "_createLucideIcon-DO3STpyk.js"
+      "_createLucideIcon-D__tKgjQ.js"
     ]
   },
   "_index-xsH4HHeE.js": {
     "file": "assets/index-xsH4HHeE.js",
     "name": "index"
   },
-  "_proxy-CDCgfpm5.js": {
-    "file": "assets/proxy-CDCgfpm5.js",
+  "_proxy--rwRUnw5.js": {
+    "file": "assets/proxy--rwRUnw5.js",
     "name": "proxy",
     "imports": [
-      "_createLucideIcon-DO3STpyk.js",
+      "_createLucideIcon-D__tKgjQ.js",
       "resources/js/react.tsx"
     ]
   },
@@ -50,44 +50,44 @@
     ]
   },
   "resources/js/pages/Pendaftaran/Create.tsx": {
-    "file": "assets/Create-C8LGXEGn.js",
+    "file": "assets/Create-ByeeoE0z.js",
     "name": "Create",
     "src": "resources/js/pages/Pendaftaran/Create.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/react.tsx",
-      "_createLucideIcon-DO3STpyk.js",
-      "_download-Dwq3tvoT.js",
+      "_createLucideIcon-D__tKgjQ.js",
+      "_download-CZflCKhl.js",
       "_index-xsH4HHeE.js"
     ]
   },
-  "resources/js/pages/Pendaftaran/Finish.tsx": {
-    "file": "assets/Finish-Eia4yxBF.js",
-    "name": "Finish",
-    "src": "resources/js/pages/Pendaftaran/Finish.tsx",
-    "isDynamicEntry": true,
-    "imports": [
-      "resources/js/react.tsx",
-      "_proxy-CDCgfpm5.js",
-      "_index-xsH4HHeE.js",
-      "_createLucideIcon-DO3STpyk.js"
-    ]
-  },
   "resources/js/pages/Pendaftaran/Index.tsx": {
-    "file": "assets/Index-oukqlxU0.js",
+    "file": "assets/Index-CGbOEPOU.js",
     "name": "Index",
     "src": "resources/js/pages/Pendaftaran/Index.tsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/react.tsx",
-      "_proxy-CDCgfpm5.js",
-      "_createLucideIcon-DO3STpyk.js",
-      "_download-Dwq3tvoT.js",
+      "_proxy--rwRUnw5.js",
+      "_createLucideIcon-D__tKgjQ.js",
+      "_download-CZflCKhl.js",
       "_index-xsH4HHeE.js"
     ]
   },
+  "resources/js/pages/Pendaftaran/Selesai.tsx": {
+    "file": "assets/Selesai-DftEEaWc.js",
+    "name": "Selesai",
+    "src": "resources/js/pages/Pendaftaran/Selesai.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/react.tsx",
+      "_proxy--rwRUnw5.js",
+      "_index-xsH4HHeE.js",
+      "_createLucideIcon-D__tKgjQ.js"
+    ]
+  },
   "resources/js/react.tsx": {
-    "file": "assets/react-B1Ge-m6k.js",
+    "file": "assets/react-Do3m5Hqw.js",
     "name": "react",
     "src": "resources/js/react.tsx",
     "isEntry": true,
@@ -96,8 +96,8 @@
     ],
     "dynamicImports": [
       "resources/js/pages/Pendaftaran/Create.tsx",
-      "resources/js/pages/Pendaftaran/Finish.tsx",
-      "resources/js/pages/Pendaftaran/Index.tsx"
+      "resources/js/pages/Pendaftaran/Index.tsx",
+      "resources/js/pages/Pendaftaran/Selesai.tsx"
     ],
     "css": [
       "assets/react-DoR9Bvxw.css"

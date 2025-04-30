@@ -14,7 +14,7 @@ enum StatusOrangTua : string implements HasLabel, HasColor {
         return match ($this) {
             self::HIDUP => 'Hidup',
             self::MENINGGAL => 'Meninggal',
-            self::TIDAK_DIKETAHUI => 'Piatu',
+            self::TIDAK_DIKETAHUI => 'Tidak Diketahui',
         };
     }
 
