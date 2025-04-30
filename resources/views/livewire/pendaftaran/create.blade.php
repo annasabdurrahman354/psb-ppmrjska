@@ -1,4 +1,4 @@
-<div class="bg-gradient-to-br from-lime-50 to-green-100 p-16 bg-zinc-100 font-inter w-full">
+<div class="bg-gradient-to-br from-lime-50 to-green-100 p-6 lg:p-16 bg-zinc-100 font-inter w-full">
     <div class="min-h-screen flex flex-col items-center justify-center">
 
         <div class="relative mb-6 w-24 h-24 text-center">
