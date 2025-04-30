@@ -1,5 +1,5 @@
-<div class="bg-gradient-to-br from-lime-50 to-green-100 p-16 bg-zinc-100 font-inter w-full">
-    <div class="min-h-screen flex flex-col items-center justify-center">
+<div class="bg-gradient-to-br from-lime-50 to-green-100 bg-zinc-100 font-inter w-full">
+    <div class="p-16 flex flex-col items-center justify-center">
 
         <div class="relative mb-6 w-24 h-24 text-center">
             <span class="absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-10 animate-ping"></span>
@@ -15,7 +15,7 @@
             PPM Roudlotul Jannah Surakarta
         </h1>
 
-        <p class="mb-16 text-lg md:text-xl italic text-gray-700 text-center">
+        <p class="text-lg md:text-xl italic text-gray-700 text-center">
             Sarjana yang Mubaligh,
             <span class="text-green-400 mx-1 relative inline-block stroke-current">
                 Mubaligh yang Sarjana
@@ -26,6 +26,8 @@
             </span>
         </p>
 
+    </div>
+    <div class="px-6 md:px-10 lg:px-16 pb-6 md:pb-10 lg:pb-16">
         @if ($pendaftaranDibuka)
             <form wire:submit.prevent="create">
                 {{ $this->form }}
@@ -40,6 +42,5 @@
                 <p>Mohon maaf, saat ini tidak ada gelombang pendaftaran calon santri baru yang sedang dibuka untuk tahun {{ \Carbon\Carbon::now()->year }}. Silakan periksa kembali nanti.</p>
             </div>
         @endif
-
     </div>
 </div>
