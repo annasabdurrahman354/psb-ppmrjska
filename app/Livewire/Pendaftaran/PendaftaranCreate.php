@@ -704,7 +704,7 @@ class PendaftaranCreate extends Component implements HasForms
                 ->success()
                 ->send();
 
-            $this->redirect('/pendaftaran/finish/'.$calonSantri->id);
+            $this->redirect('/selesai/'.$calonSantri->id);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error creating Calon Santri: ' . $e->getMessage() . "\n" . $e->getTraceAsString());

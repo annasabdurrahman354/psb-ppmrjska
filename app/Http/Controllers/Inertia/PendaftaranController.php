@@ -529,7 +529,7 @@ class PendaftaranController extends Controller
      * @param GelombangPendaftaran $gelombangPendaftaran The GelombangPendaftaran instance resolved from the {id} route parameter.
      * @return \Inertia\Response
      */
-    public function finish($id) // <-- Type-hint the model
+    public function selesai($id) // <-- Type-hint the model
     {
 
         // Laravel automatically fetched the GelombangPendaftaran using the {id} from the route.
@@ -541,7 +541,7 @@ class PendaftaranController extends Controller
         $pendaftaran = GelombangPendaftaran::find($calonSantri->gelombang_pendaftaran_id);
 
         // Render the Inertia view and pass the link_grup as a prop
-        return Inertia::render('Pendaftaran/Finish', [
+        return Inertia::render('Pendaftaran/Selesai', [
             'link_grup' => $pendaftaran->link_grup ?? null
         ]);
     }

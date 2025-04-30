@@ -126,7 +126,7 @@ export default function FinishPage({ link_grup }) {
 
 
                     <Link
-                        href="/pendaftaran"
+                        href="/"
                         className="mt-4 text-teal-600 hover:text-teal-800 font-medium inline-flex items-center gap-1"
                     >
                         Kembali ke Halaman Pendaftaran

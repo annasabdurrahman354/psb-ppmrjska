@@ -204,7 +204,7 @@ const PendaftaranIndex: React.FC<Props> = ({
                             <button
                                 onClick={() => {
                                     if (statusPendaftaran === "sedang_dibuka" && gelombangAktifId) {
-                                        window.location.href = `/pendaftaran/create`
+                                        window.location.href = `/pendaftaran`
                                     } else if (
                                         statusPendaftaran === "menunggu_pembukaan" ||
                                         statusPendaftaran === "menunggu_gelombang_berikutnya"
