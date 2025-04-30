@@ -66,6 +66,7 @@ interface Props {
     jargon: string
     mengapaMondok: string
     kontakPanitia: KontakPanitia[]
+    kontakPengurus: KontakPanitia[]
 }
 
 // Helper function to format dates
@@ -121,6 +122,7 @@ const PendaftaranIndex: React.FC<Props> = ({
                                                jargon,
                                                mengapaMondok,
                                                kontakPanitia,
+                                               kontakPengurus
                                            }) => {
     const [activeTab, setActiveTab] = useState<string>(Object.keys(kampusSekitar)[0])
     const [expandedAccordion, setExpandedAccordion] = useState<number | null>(null)
@@ -622,7 +624,36 @@ const PendaftaranIndex: React.FC<Props> = ({
                                                 <h3 className="font-semibold text-lg text-green-50">{kontak.nama}</h3>
                                                 <p className="text-green-200 text-sm mb-2">{kontak.jabatan}</p>
                                                 <a
-                                                    href={`https://wa.me/${kontak.nomor_telepon.replace(/\D/g, "")}`}
+                                                    href={`https://wa.me/${kontak.nomor_telepon}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-green-100 hover:text-white transition-colors"
+                                                >
+                                                    {kontak.nomor_telepon}
+                                                    <ExternalLink className="h-3 w-3" />
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                                {kontakPengurus.map((kontak, index) => (
+                                    <motion.div
+                                        key={index}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                                        viewport={{ once: true }}
+                                        className="bg-lime-700/50 p-5 rounded-lg backdrop-blur-sm"
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className="bg-green-700 p-3 rounded-full">
+                                                <Phone className="h-5 w-5 text-green-100" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-lg text-green-50">{kontak.nama}</h3>
+                                                <p className="text-green-200 text-sm mb-2">{kontak.jabatan}</p>
+                                                <a
+                                                    href={`https://wa.me/${kontak.nomor_telepon}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="inline-flex items-center gap-1 text-green-100 hover:text-white transition-colors"
