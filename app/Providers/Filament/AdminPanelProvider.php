@@ -26,14 +26,14 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Jeffgreco13\FilamentBreezy\BreezyCore;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 
-class SimakPanelProvider extends PanelProvider
+class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
             ->default()
-            ->id('simak')
-            ->path('simak')
+            ->id('admin')
+            ->path('admin')
             ->login()
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->font('Inter', provider: GoogleFontProvider::class)
