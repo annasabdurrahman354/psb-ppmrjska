@@ -345,12 +345,12 @@ class PendaftaranController extends Controller
 
         // Ambil data pendaftaran untuk tahun ini beserta relasinya
         $pendaftaran = Pendaftaran::with([
-            'gelombangPendaftaran' => function ($query) {
-                $query->orderBy('nomor_gelombang', 'asc'); // Urutkan gelombang
-            },
-            'dokumenPendaftaran', // Ensure media relation is loaded if needed for URL
-            'indikatorPenilaian'
-        ])
+                'gelombangPendaftaran' => function ($query) {
+                    $query->orderBy('nomor_gelombang', 'asc'); // Urutkan gelombang
+                },
+                'dokumenPendaftaran', // Ensure media relation is loaded if needed for URL
+                'indikatorPenilaian'
+            ])
             ->where('tahun', $tahunSekarang)
             ->first();
 
@@ -513,6 +513,7 @@ class PendaftaranController extends Controller
             'mengapaMondok' => $mengapaMondok,
             // Use optional chaining or check if $pendaftaranData is null before accessing contact
             'kontakPanitia' => $pendaftaranData['kontak_panitia'] ?? [],
+            'kontakPengurus' => $pendaftaranData['kontak_pengurus'] ?? [],
             // Dokumen and Indikator are now included within $pendaftaranData if it's not null
         ]);
     }
