@@ -20,7 +20,7 @@ enum JenisKelamin : string implements HasLabel, HasColor {
     {
         return match ($this) {
             self::LAKI_LAKI => 'primary',
-            self::PEREMPUAN => 'secondary',
+            self::PEREMPUAN => 'warning',
         };
     }
 }
