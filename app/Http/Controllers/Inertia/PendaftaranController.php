@@ -518,6 +518,87 @@ class PendaftaranController extends Controller
         ]);
     }
 
+    public function list(Request $request)
+    {
+        $tahun     = $request->input('tahun');
+        $gelombang = $request->input('gelombang');
+
+        $query = CalonSantri::query();
+
+        if ($tahun) {
+            $query->whereHas('gelombangPendaftaran.pendaftaran', function ($q) use ($tahun) {
+                $q->where('tahun', $tahun);
+            });
+        }
+
+        if ($gelombang) {
+            $query->whereHas('gelombangPendaftaran', function ($q) use ($gelombang) {
+                $q->where('nomor_gelombang', $gelombang);
+            });
+        }
+
+        $santri = $query
+            ->with([
+                'gelombangPendaftaran.pendaftaran',
+                'provinsi', 'kota', 'kecamatan', 'kelurahan'
+            ])
+            ->get()
+            ->map(fn($s) => [
+                'id'                => $s->id,
+                'nama'              => $s->nama,
+                'nama_panggilan'    => $s->nama_panggilan,
+                'jenis_kelamin'     => $s->jenis_kelamin,
+                'tempat_lahir'      => $s->tempat_lahir,
+                'tanggal_lahir'     => $s->tanggal_lahir ? \Carbon\Carbon::parse($s->tanggal_lahir)->format('d F Y') : '-',
+                'status_mubaligh'   => $s->status_mubaligh,
+                'pernah_mondok'     => $s->pernah_mondok,
+                'universitas'       => $s->universitas,
+                'program_studi'     => $s->program_studi,
+                'angkatan_kuliah'   => $s->angkatan_kuliah,
+                'status_kuliah'     => $s->status_kuliah,
+                'alamat'            => $s->alamat,
+                'rt'                => $s->rt,
+                'rw'                => $s->rw,
+                'provinsi'          => $s->provinsi->nama ?? '-',
+                'kota'              => $s->kota->nama ?? '-',
+                'kecamatan'         => $s->kecamatan->nama ?? '-',
+                'kelurahan'         => $s->kelurahan->nama ?? '-',
+                'city'              => $s->city,
+                'state_province'    => $s->state_province,
+                'kode_pos'          => $s->kode_pos,
+                'kelompok_sambung'  => $s->kelompok_sambung,
+                'desa_sambung'      => $s->desa_sambung,
+                'daerahSambung'     => $s->daerahSambung->nama ?? '-',
+                'mulai_mengaji'     => $s->mulai_mengaji,
+                'bahasa_makna'      => $s->bahasa_makna,
+                'bahasa_harian'     => $s->bahasa_harian,
+                'status_tinggal'    => $s->status_tinggal,
+                'anak_nomor'        => $s->anak_nomor,
+                'jumlah_saudara'    => $s->jumlah_saudara,
+                'nama_ayah'         => $s->nama_ayah,
+                'nomor_telepon_ayah'=> $s->nomor_telepon_ayah,
+                'status_ayah'       => $s->status_ayah,
+                'nama_ibu'          => $s->nama_ibu,
+                'nomor_telepon_ibu' => $s->nomor_telepon_ibu,
+                'status_ibu'        => $s->status_ibu,
+                'hubungan_wali'     => $s->hubungan_wali,
+                'tahun_pendaftaran' => $s->gelombangPendaftaran->pendaftaran->tahun ?? '-',
+                'gelombang'         => $s->gelombangPendaftaran->nomor_gelombang ?? '-',
+            ]);
+
+        $tahunList = Pendaftaran::select('tahun')->distinct()->orderBy('tahun', 'desc')->pluck('tahun');
+
+        $gelombangList = GelombangPendaftaran::select('nomor_gelombang')->distinct()->orderBy('nomor_gelombang')->pluck('nomor_gelombang');
+
+        return Inertia::render('Pendaftaran/List', [
+            'santri'            => $santri,
+            'tahunList'         => $tahunList,
+            'gelombangList'     => $gelombangList,
+            'selectedTahun'     => $tahun,
+            'selectedGelombang' => $gelombang,
+        ]);
+    }
+
     /**
      * Display the success page after registration.
      */

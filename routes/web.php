@@ -24,3 +24,5 @@ Route::get('/command/filament/optimize-clear', function () {
     dd("Filament cache is cleared");
 });
 
+Route::get('/list', [PendaftaranController::class, 'list'])->name('pendaftaran.list');
+
