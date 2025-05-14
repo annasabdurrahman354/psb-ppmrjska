@@ -153,7 +153,14 @@ class PendaftaranCreate extends Component implements HasForms
                                     TextInput::make('nomor_telepon')
                                         ->label('Nomor Telepon (Whatsapp)')
                                         ->tel()
-                                        ->required(),
+                                        ->required()
+                                        ->rules([
+                                            'regex:/^0[0-9]{8,14}$/',
+                                        ])
+                                        ->validationMessages([
+                                            'regex' => 'Nomor telepon harus diawali dengan angka 0 dan tidak boleh mengandung spasi atau tanda hubung (-).',
+                                        ])
+                                        ->extraAttributes(['inputmode' => 'numeric', 'pattern' => '[0-9]*']),
                                     TextInput::make('email')
                                         ->label('Email')
                                         ->email()
