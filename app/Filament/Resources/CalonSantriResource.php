@@ -12,9 +12,11 @@ use App\Enums\Negara;
 use App\Enums\PendidikanTerakhir;
 use App\Enums\StatusKuliah;
 use App\Enums\StatusOrangTua;
+use App\Enums\StatusPenerimaan;
 use App\Enums\StatusPernikahan;
 use App\Enums\StatusTinggal;
 use App\Enums\UkuranBaju;
+use App\Filament\Actions\BuatAkunCalonSantriAction;
 use App\Filament\Resources\CalonSantriResource\Pages;
 use App\Filament\Resources\CalonSantriResource\RelationManagers; // If you have relation managers
 use App\Models\CalonSantri;
@@ -766,6 +768,11 @@ class CalonSantriResource extends Resource
                     ->badge()
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('penilaian.status_penerimaan')
+                    ->label('Status Penerimaan')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('created_at')
                     ->label('Tanggal Mendaftar')
                     ->dateTime()
@@ -812,9 +819,18 @@ class CalonSantriResource extends Resource
                     ->label('Jenis Kelamin')
                     ->options(JenisKelamin::class),
 
-                SelectFilter::make('status_kuliah')
-                    ->label('Status Kuliah')
-                    ->options(StatusKuliah::class),
+                SelectFilter::make('status_penerimaan')
+                    ->label('Status Penerimaan')
+                    ->options(StatusPenerimaan::class)
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $value): Builder => $query->whereHas(
+                                'penilaian',
+                                fn(Builder $q) => $q->where('status_penerimaan', $value)
+                            )
+                        );
+                    }),
 
                 //Tables\Filters\TrashedFilter::make(), // Jika menggunakan SoftDeletes
             ], Tables\Enums\FiltersLayout::AboveContent)
@@ -831,6 +847,9 @@ class CalonSantriResource extends Resource
                     // Tables\Actions\ForceDeleteBulkAction::make(),
                     // Tables\Actions\RestoreBulkAction::make(),
                 // ]),
+            ])
+            ->headerActions([
+                BuatAkunCalonSantriAction::make()
             ])
             ->defaultSort('created_at', 'desc');
     }
