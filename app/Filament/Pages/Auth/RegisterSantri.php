@@ -494,7 +494,7 @@ class RegisterSantri extends BaseRegister
         try {
             // Create User with user-specific fields
             $user = User::create([
-                'name' => $formData['nama'],
+                'nama' => $formData['nama'],
                 'email' => $formData['email'],
                 'password' => Hash::make($formData['password']),
                 'role' => UserRole::SANTRI,
