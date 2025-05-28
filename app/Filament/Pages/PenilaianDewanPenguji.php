@@ -6,6 +6,7 @@ use App\Enums\JenisKelamin;
 use App\Enums\Role;
 use App\Filament\Resources\PenilaianCalonSantriResource;
 use App\Models\CalonSantri;
+use App\Models\GelombangPendaftaran;
 use App\Models\IndikatorPenilaian;
 use App\Models\Pendaftaran;
 use App\Models\PenilaianCalonSantri;
@@ -52,14 +53,14 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
         // $this->form->fill(); // Initialize if there's a page-level form
     }
 
-    protected function getPendaftaranIdTahunIni(): ?string
+    protected function getPendaftaranIdTerbaru(): ?string
     {
-        return Pendaftaran::where('tahun', Carbon::now()->year)->value('id');
+        return Pendaftaran::orderBy('tahun')->first()->id ?? null;
     }
 
-    protected function getIndikatorPenilaianTahunIni(): \Illuminate\Database\Eloquent\Collection
+    protected function getIndikatorPenilaianTerbaru(): \Illuminate\Database\Eloquent\Collection
     {
-        $pendaftaranId = $this->getPendaftaranIdTahunIni();
+        $pendaftaranId = $this->getPendaftaranIdTerbaru();
         if (!$pendaftaranId) {
             return collect();
         }
@@ -68,11 +69,11 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
 
     public function table(Table $table): Table
     {
-        $pendaftaranIdTahunIni = $this->getPendaftaranIdTahunIni();
+        $pendaftaranIdTerbaru = $this->getPendaftaranIdTerbaru();
         $indikatorColumns = [];
 
-        if ($pendaftaranIdTahunIni) {
-            $indikators = $this->getIndikatorPenilaianTahunIni();
+        if ($pendaftaranIdTerbaru) {
+            $indikators = $this->getIndikatorPenilaianTerbaru();
             foreach ($indikators as $indikator) {
                 $indikatorColumns[] = Tables\Columns\TextColumn::make('penilaian.detailPenilaian.' . $indikator->id)
                     ->label('Nilai '.$indikator->nama)
@@ -87,14 +88,26 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
             }
         }
 
+        // First, find the latest 'awal_pendaftaran' date for the current year.
+        $latestGelombangId = GelombangPendaftaran::whereHas('pendaftaran', function (Builder $query) use ($pendaftaranIdTerbaru) {
+                $query->where('id', $pendaftaranIdTerbaru);
+            })->orderBy('awal_pendaftaran', 'desc')->first()->id;
+
+        // Prepare the base query for CalonSantri
+        $calonSantriQuery = CalonSantri::query()
+            ->with(['penilaian.penguji', 'penilaian.detailPenilaian.indikatorPenilaian']);
+
+        if ($latestGelombangId) {
+            $calonSantriQuery->whereHas('gelombangPendaftaran', function (Builder $subQuery) use ($latestGelombangId) {
+                $subQuery->where('id', $latestGelombangId);
+            });
+        } else {
+            // If no gelombang found for the current year, return an empty result.
+            $calonSantriQuery->whereRaw('1 = 0');
+        }
+
         return $table
-            ->query(
-                CalonSantri::query()
-                    ->whereHas('gelombangPendaftaran.pendaftaran', function (Builder $query) {
-                        $query->where('tahun', Carbon::now()->year);
-                    })
-                    ->with(['penilaian.penguji', 'penilaian.detailPenilaian.indikatorPenilaian'])
-            )
+            ->query($calonSantriQuery)
             ->columns(array_merge([
                 Tables\Columns\TextColumn::make('nama')
                     ->searchable()
@@ -137,7 +150,7 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
                     ->icon('heroicon-o-plus-circle')
                     ->fillForm(function (CalonSantri $record): array {
                         // Pre-fill form for creation, especially if some data can be derived
-                        $indikators = $this->getIndikatorPenilaianTahunIni();
+                        $indikators = $this->getIndikatorPenilaianTerbaru();
                         $detailPenilaianDefaults = $indikators->map(fn(IndikatorPenilaian $indikator) => [
                             'indikator_penilaian_id' => $indikator->id,
                             'nilai' => 0,
@@ -161,12 +174,12 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
                         Forms\Components\Repeater::make('detailPenilaian')
                             ->label('Penilaian')
                             // ->relationship() // We will handle saving this manually for create
-                            ->schema(function (Get $get) use ($pendaftaranIdTahunIni) : array {
-                                if (!$pendaftaranIdTahunIni) {
+                            ->schema(function (Get $get) use ($pendaftaranIdTerbaru) : array {
+                                if (!$pendaftaranIdTerbaru) {
                                     return [Forms\Components\Placeholder::make('no_pendaftaran')
                                         ->content('Pendaftaran tahun ini tidak ditemukan.')];
                                 }
-                                $indikators = $this->getIndikatorPenilaianTahunIni();
+                                $indikators = $this->getIndikatorPenilaianTerbaru();
                                 if ($indikators->isEmpty()){
                                     return [
                                         Forms\Components\Placeholder::make('indikator_kosong')
@@ -237,7 +250,7 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
                         if (!$record->penilaian) {
                             return []; // Should not happen if action is visible
                         }
-                        $indikators = $this->getIndikatorPenilaianTahunIni();
+                        $indikators = $this->getIndikatorPenilaianTerbaru();
                         $detailPenilaianData = $indikators->map(function(IndikatorPenilaian $indikator) use ($record) {
                             $detail = $record->penilaian->detailPenilaian->firstWhere('indikator_penilaian_id', $indikator->id);
                             return [
@@ -264,12 +277,12 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
                         Forms\Components\Hidden::make('penguji_id'), // Keep original penguji, not editable here
                         Forms\Components\Repeater::make('detailPenilaian')
                             ->label('Penilaian Indikator')
-                            ->schema(function (Get $get) use ($pendaftaranIdTahunIni) : array {
-                                if (!$pendaftaranIdTahunIni) {
+                            ->schema(function (Get $get) use ($pendaftaranIdTerbaru) : array {
+                                if (!$pendaftaranIdTerbaru) {
                                     return [Forms\Components\Placeholder::make('no_pendaftaran_edit') // Unique key
                                     ->content('Pendaftaran tahun ini tidak ditemukan.')];
                                 }
-                                $indikators = $this->getIndikatorPenilaianTahunIni();
+                                $indikators = $this->getIndikatorPenilaianTerbaru();
                                 if ($indikators->isEmpty()){
                                     return [
                                         Forms\Components\Placeholder::make('indikator_kosong_edit') // Unique key

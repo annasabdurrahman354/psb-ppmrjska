@@ -273,7 +273,7 @@ class PenilaianCalonSantriResource extends Resource
                             ->orderBy('tahun', 'desc')
                             ->pluck('tahun', 'tahun')
                     )
-                    ->default(now()->year)
+                    ->default(Pendaftaran::orderBy('tahun', 'desc')->first()->tahun ?? now()->year)
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['value'],
@@ -291,11 +291,7 @@ class PenilaianCalonSantriResource extends Resource
                         2 => 2,
                         3 => 3
                     ])
-                    ->default(GelombangPendaftaran::where('awal_pendaftaran', '<', now())
-                        ->where('akhir_pendaftaran', '>', now())
-                        ->first()
-                        ->nomor_gelombang
-                    )
+                    ->default(GelombangPendaftaran::orderBy('awal_pendaftaran', 'desc')->first()->nomor_gelombang ?? 1)
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['value'],
