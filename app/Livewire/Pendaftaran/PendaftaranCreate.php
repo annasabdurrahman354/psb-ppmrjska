@@ -502,7 +502,7 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->label('Daerah Sambung Ayah')
                                         ->relationship(name: 'daerahSambungAyah', titleAttribute: 'nama')
                                         ->searchable()
-                                        ->optionsLimit(1)
+                                        ->optionsLimit(2)
                                         ->preload()
                                         ->visible(fn (Get $get): bool => $get('status_ayah') === StatusOrangTua::HIDUP->value)
                                         ->required(fn (Get $get): bool => $get('status_ayah') === StatusOrangTua::HIDUP->value),
@@ -559,7 +559,7 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->label('Daerah Sambung Ibu')
                                         ->relationship(name: 'daerahSambungIbu', titleAttribute: 'nama')
                                         ->searchable()
-                                        ->optionsLimit(1)
+                                        ->optionsLimit(2)
                                         ->visible(fn (Get $get): bool => $get('status_ibu') === StatusOrangTua::HIDUP->value)
                                         ->required(fn (Get $get): bool => $get('status_ibu') === StatusOrangTua::HIDUP->value),
                                 ]),
@@ -608,7 +608,7 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->label('Daerah Sambung Wali')
                                         ->relationship(name: 'daerahSambungWali', titleAttribute: 'nama')
                                         ->searchable()
-                                        ->optionsLimit(1)
+                                        ->optionsLimit(2)
                                         ->visible(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
                                 ]),
                         ]),

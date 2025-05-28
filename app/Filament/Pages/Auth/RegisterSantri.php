@@ -424,6 +424,7 @@ class RegisterSantri extends BaseRegister
                                         ->required(fn (Get $get) => $get('status_ibu') === StatusOrangTua::HIDUP->value),
                                     Select::make('daerah_sambung_ibu_id')
                                         ->label('Daerah Sambung')
+                                        ->searchable()
                                         ->getSearchResultsUsing(fn (string $search): array => Daerah::where('nama', 'like', "%{$search}%")->limit(2)->pluck('nama', 'id')->toArray())
                                         ->getOptionLabelUsing(fn ($value): ?string => Daerah::find($value)?->nama)
                                         ->visible(fn (Get $get) => $get('status_ibu') === StatusOrangTua::HIDUP->value)
@@ -468,6 +469,7 @@ class RegisterSantri extends BaseRegister
                                         ->visible(fn (Get $get): bool => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
                                     Select::make('daerah_sambung_wali_id')
                                         ->label('Daerah Sambung')
+                                        ->searchable()
                                         ->getSearchResultsUsing(fn (string $search): array => Daerah::where('nama', 'like', "%{$search}%")->limit(2)->pluck('nama', 'id')->toArray())
                                         ->getOptionLabelUsing(fn ($value): ?string => Daerah::find($value)?->nama)
                                         ->visible(fn (Get $get): bool => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
