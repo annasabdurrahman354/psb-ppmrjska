@@ -74,6 +74,13 @@ class PenilaianCalonSantri extends Model
         ];
     }
 
+    public function getNilaiAkhirAttribute(): float
+    {
+        return $this->detailPenilaian->reduce(function ($carry, $detail) {
+            return $carry + ($detail->nilai * ($detail->indikatorPenilaian?->bobot ?? 0));
+            }, 0);
+    }
+
     /**
      * Get the applicant being assessed.
      */

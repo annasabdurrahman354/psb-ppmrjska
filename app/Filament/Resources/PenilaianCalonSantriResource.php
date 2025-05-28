@@ -126,75 +126,39 @@ class PenilaianCalonSantriResource extends Resource
                     ->required(),
 
                 Forms\Components\Repeater::make('detailPenilaian')
-                    ->label('Penilaian')
-                    ->relationship('detailPenilaian')
-                    ->hiddenLabel(fn (Get $get) => !$get('calon_santri_id'))
-                    ->schema(function (Get $get): array {
-                        $calonSantriId = $get('calon_santri_id');
-                        if (!$calonSantriId) {
-                            return [
-                                Forms\Components\Placeholder::make('pilih_calon_santri')
-                                    ->label('')
-                                    ->content('Pilih calon santri terlebih dahulu untuk mengisi detail penilaian.'),
-                            ];
-                        }
-
-                        $calonSantri = CalonSantri::find($calonSantriId);
-                        $pendaftaranId = $calonSantri?->gelombangPendaftaran?->pendaftaran_id;
-
-                        if (!$pendaftaranId) {
-                            return [
-                                Forms\Components\Placeholder::make('pendaftaran_tidak_ditemukan')
-                                    ->label('')
-                                    ->content('Data pendaftaran untuk calon santri ini tidak ditemukan.'),
-                            ];
-                        }
-
-                        $indikators = IndikatorPenilaian::where('pendaftaran_id', $pendaftaranId)->get();
-
-                        if ($indikators->isEmpty()){
-                            return [
-                                Forms\Components\Placeholder::make('indikator_kosong')
-                                    ->label('')
-                                    ->content('Belum ada indikator penilaian untuk pendaftaran ini.'),
-                            ];
-                        }
-
-                        return $indikators->map(function (IndikatorPenilaian $indikator) {
-                            return Forms\Components\Grid::make(2)
-                                ->schema([
-                                    Forms\Components\Hidden::make('indikator_penilaian_id')
-                                        ->default($indikator->id),
-                                    Forms\Components\Placeholder::make('nama_indikator')
-                                        ->label('Indikator')
-                                        ->content($indikator->nama . ' (Bobot: ' . $indikator->bobot . ')'),
-                                    Forms\Components\TextInput::make('nilai')
-                                        ->label('Nilai')
-                                        ->numeric()
-                                        ->minValue(0)
-                                        ->maxValue(100)
-                                        ->required(),
-                                ]);
-                        })->all();
-                    })
+                    ->label('Detail Penilaian')
+                    ->relationship('detailPenilaian') // Penting untuk save/load relasi
+                    ->hidden(fn (Get $get) => !$get('calon_santri_id')) // Sembunyikan jika belum ada calon santri terpilih
+                    ->schema([ // Schema ini mendefinisikan field untuk SATU item DetailPenilaian
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Hidden::make('id'), // Untuk update existing relationship items
+                                Forms\Components\Hidden::make('indikator_penilaian_id')
+                                    ->required(), // Akan diisi oleh afterStateUpdated
+                                Forms\Components\Placeholder::make('nama_indikator_display')
+                                    ->label('Indikator')
+                                    ->content(function (Get $get): string {
+                                        $indikatorId = $get('indikator_penilaian_id');
+                                        if ($indikatorId) {
+                                            $indikator = IndikatorPenilaian::find($indikatorId);
+                                            return $indikator ? ($indikator->nama . ' (Bobot: ' . $indikator->bobot . ')') : 'Indikator tidak valid';
+                                        }
+                                        // Ini seharusnya tidak terjadi jika data repeater diisi dengan benar
+                                        return 'Indikator belum ditentukan';
+                                    }),
+                                Forms\Components\TextInput::make('nilai')
+                                    ->label('Nilai')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->default(0) // Default untuk item baru jika `afterStateUpdated` tidak menyediakannya
+                                    ->required(),
+                            ]),
+                    ])
                     ->columns(1)
-                    ->reorderable(false) // Menonaktifkan reordering jika tidak diperlukan
-                    ->addable(false) // Menonaktifkan penambahan item baru secara manual oleh user jika skema sudah tetap
-                    ->deletable(false) // Menonaktifkan penghapusan item jika tidak diperlukan
-                    ->default(function (Get $get): array { // Mengisi repeater dengan indikator yang ada
-                        $calonSantriId = $get('calon_santri_id');
-                        if (!$calonSantriId) return [];
-
-                        $calonSantri = CalonSantri::find($calonSantriId);
-                        $pendaftaranId = $calonSantri?->gelombangPendaftaran?->pendaftaran_id;
-                        if (!$pendaftaranId) return [];
-
-                        $indikators = IndikatorPenilaian::where('pendaftaran_id', $pendaftaranId)->get();
-                        return $indikators->map(fn(IndikatorPenilaian $indikator) => [
-                            'indikator_penilaian_id' => $indikator->id,
-                            'nilai' => 0, // Nilai default
-                        ])->all();
-                    })
+                    ->reorderable(false)
+                    ->addable(false) // Item dibuat berdasarkan jumlah indikator, bukan ditambahkan manual
+                    ->deletable(false) // Item tidak dihapus manual, terkait dengan indikator
                     ->columnSpanFull(),
 
 
@@ -237,11 +201,7 @@ class PenilaianCalonSantriResource extends Resource
                 Tables\Columns\TextColumn::make('nilai_akhir')
                     ->label('Nilai Akhir')
                     ->numeric()
-                    ->state(function (PenilaianCalonSantri $record): float { // Pindahkan ke accessor model
-                        return $record->detailPenilaian->reduce(function ($carry, $detail) {
-                             return $carry + ($detail->nilai * ($detail->indikatorPenilaian?->bobot ?? 0));
-                        }, 0);
-                    }),
+                    ->state(fn (PenilaianCalonSantri $record) => $record->nilai_akhir),
                 Tables\Columns\TextColumn::make('penguji.nama')
                     ->label('Penguji')
                     ->sortable()
