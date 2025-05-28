@@ -172,38 +172,32 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
                             ->default(fn () => Auth::id())
                             ->required(),
                         Forms\Components\Repeater::make('detailPenilaian')
-                            ->label('Penilaian')
-                            // ->relationship() // We will handle saving this manually for create
-                            ->schema(function (Get $get) use ($pendaftaranIdTerbaru) : array {
-                                if (!$pendaftaranIdTerbaru) {
-                                    return [Forms\Components\Placeholder::make('no_pendaftaran')
-                                        ->content('Pendaftaran tahun ini tidak ditemukan.')];
-                                }
-                                $indikators = $this->getIndikatorPenilaianTerbaru();
-                                if ($indikators->isEmpty()){
-                                    return [
-                                        Forms\Components\Placeholder::make('indikator_kosong')
-                                            ->content('Belum ada indikator penilaian untuk pendaftaran tahun ini.'),
-                                    ];
-                                }
-                                return $indikators->map(function (IndikatorPenilaian $indikator) {
-                                    return Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\Hidden::make('indikator_penilaian_id')
-                                                ->default($indikator->id),
-                                            Forms\Components\Placeholder::make('nama_indikator')
-                                                ->label('Indikator')
-                                                ->content($indikator->nama . ' (Bobot: ' . $indikator->bobot . ')'),
-                                            Forms\Components\TextInput::make('nilai')
-                                                ->label('Nilai')
-                                                ->numeric()
-                                                ->minValue(0)
-                                                ->maxValue(100)
-                                                ->default(0)
-                                                ->required(),
-                                        ]);
-                                })->all();
-                            })
+                            ->label('Penilaian Indikator')
+                            ->schema([
+                                // Schema ini mendefinisikan field untuk SATU baris repeater
+                                Forms\Components\Grid::make(2)->schema([
+                                    Forms\Components\Hidden::make('indikator_penilaian_id'),
+                                    Forms\Components\Placeholder::make('nama_indikator')
+                                        ->label('Indikator')
+                                        ->content(function (Get $get): string {
+                                            // Ambil ID indikator dari data baris ini
+                                            $indikatorId = $get('indikator_penilaian_id');
+                                            if (!$indikatorId) {
+                                                return 'Indikator tidak ditemukan';
+                                            }
+                                            // Cari model Indikator untuk mendapatkan nama dan bobot
+                                            $indikator = IndikatorPenilaian::find($indikatorId);
+                                            return $indikator ? "{$indikator->nama} (Bobot: {$indikator->bobot})" : 'Tidak Ditemukan';
+                                        }),
+                                    Forms\Components\TextInput::make('nilai')
+                                        ->label('Nilai')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->maxValue(100)
+                                        ->default(0)
+                                        ->required(),
+                                ])
+                            ])
                             ->columns(1)
                             ->reorderable(false)
                             ->addable(false)
@@ -277,35 +271,27 @@ class PenilaianDewanPenguji extends Page implements HasTable, HasForms
                         Forms\Components\Hidden::make('penguji_id'), // Keep original penguji, not editable here
                         Forms\Components\Repeater::make('detailPenilaian')
                             ->label('Penilaian Indikator')
-                            ->schema(function (Get $get) use ($pendaftaranIdTerbaru) : array {
-                                if (!$pendaftaranIdTerbaru) {
-                                    return [Forms\Components\Placeholder::make('no_pendaftaran_edit') // Unique key
-                                    ->content('Pendaftaran tahun ini tidak ditemukan.')];
-                                }
-                                $indikators = $this->getIndikatorPenilaianTerbaru();
-                                if ($indikators->isEmpty()){
-                                    return [
-                                        Forms\Components\Placeholder::make('indikator_kosong_edit') // Unique key
-                                        ->content('Belum ada indikator penilaian untuk pendaftaran tahun ini.'),
-                                    ];
-                                }
-                                return $indikators->map(function (IndikatorPenilaian $indikator) {
-                                    return Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\Hidden::make('indikator_penilaian_id')
-                                                ->default($indikator->id), // Will be pre-filled by fillForm
-                                            Forms\Components\Placeholder::make('nama_indikator_edit_placeholder_'. $indikator->id) // Unique key per indicator
-                                            ->label('Indikator')
-                                                ->content($indikator->nama . ' (Bobot: ' . $indikator->bobot . ')'),
-                                            Forms\Components\TextInput::make('nilai')
-                                                ->label('Nilai (0-100)')
-                                                ->numeric()
-                                                ->minValue(0)
-                                                ->maxValue(100)
-                                                ->required(),
-                                        ]);
-                                })->all();
-                            })
+                            ->schema([
+                                Forms\Components\Grid::make(2)->schema([
+                                    Forms\Components\Hidden::make('indikator_penilaian_id'),
+                                    Forms\Components\Placeholder::make('nama_indikator_edit')
+                                        ->label('Indikator')
+                                        ->content(function (Get $get): string {
+                                            $indikatorId = $get('indikator_penilaian_id');
+                                            if (!$indikatorId) {
+                                                return 'Indikator tidak ditemukan';
+                                            }
+                                            $indikator = IndikatorPenilaian::find($indikatorId);
+                                            return $indikator ? "{$indikator->nama} (Bobot: {$indikator->bobot})" : 'Tidak Ditemukan';
+                                        }),
+                                    Forms\Components\TextInput::make('nilai')
+                                        ->label('Nilai (0-100)')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->maxValue(100)
+                                        ->required(),
+                                ])
+                            ])
                             ->columns(1)
                             ->reorderable(false)
                             ->addable(false)
