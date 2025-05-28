@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\RegisterSantri;
 use App\Settings\PengaturanSitus;
 use BezhanSalleh\FilamentExceptions\FilamentExceptionsPlugin;
 use BezhanSalleh\FilamentExceptions\Resources\ExceptionResource;
@@ -35,6 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->registration(RegisterSantri::class)
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->font('Inter', provider: GoogleFontProvider::class)
             ->favicon(fn (PengaturanSitus $settings) => Storage::url($settings->site_favicon))
