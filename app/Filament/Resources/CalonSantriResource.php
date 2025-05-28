@@ -779,7 +779,7 @@ class CalonSantriResource extends Resource
                             ->orderBy('tahun', 'desc')
                             ->pluck('tahun', 'tahun')
                     )
-                    ->default(now()->year)
+                    ->default(Pendaftaran::orderBy('tahun', 'desc')->first()->tahun ?? null)
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['value'],
@@ -797,11 +797,7 @@ class CalonSantriResource extends Resource
                         2 => 2,
                         3 => 3
                     ])
-                    ->default(GelombangPendaftaran::where('awal_pendaftaran', '<', now())
-                        ->where('akhir_pendaftaran', '>', now())
-                        ->first()
-                        ->nomor_gelombang
-                    )
+                    ->default(GelombangPendaftaran::orderBy('awal_pendaftaran', 'desc')->first()->nomor_gelombang ?? null)
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['value'],
