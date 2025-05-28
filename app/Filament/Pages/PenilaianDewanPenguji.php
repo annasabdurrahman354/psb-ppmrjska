@@ -4,13 +4,12 @@ namespace App\Filament\Pages;
 
 use App\Enums\JenisKelamin;
 use App\Enums\Role;
-use App\Filament\Resources\PenilaianCalonSantriResource;
 use App\Models\CalonSantri;
 use App\Models\GelombangPendaftaran;
 use App\Models\IndikatorPenilaian;
 use App\Models\Pendaftaran;
-use App\Models\PenilaianCalonSantri;
 use App\Enums\StatusPenerimaan;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -25,11 +24,11 @@ use Illuminate\Support\Facades\Auth;
 use Mokhosh\FilamentRating\Components\Rating as RatingField;
 use Mokhosh\FilamentRating\Columns\RatingColumn;
 use Mokhosh\FilamentRating\RatingTheme;
-use Carbon\Carbon;
 use Filament\Notifications\Notification;
 
 class PenilaianDewanPenguji extends Page implements HasTable, HasForms
 {
+    use HasPageShield;
     use InteractsWithTable;
     use InteractsWithForms;
 

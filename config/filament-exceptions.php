@@ -1,10 +1,8 @@
 <?php
 
-use BezhanSalleh\FilamentExceptions\Models\Exception;
-
 return [
 
-    'exception_model' => Exception::class,
+    'exception_model' => \App\Models\Exception::class,
 
     'slug' => 'exceptions',
 
