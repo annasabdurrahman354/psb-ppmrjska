@@ -76,7 +76,7 @@ class SantriResource extends Resource
                             ->color('info')
                             ->size(TextColumn\TextColumnSize::Small)
                             ->placeholder('No Class Assigned')
-                            ->visibleFrom('xs'), // Show even on smallest screens if available
+                            ->visibleFrom('sm'), // Show even on smallest screens if available
                     ])->space(1),
 
                     // Stack 2: Gender, Status Tinggal, Status Pondok (Visible from Medium)
@@ -158,28 +158,14 @@ class SantriResource extends Resource
 
             ])
             ->filters([
-                Tables\Filters\TrashedFilter::make(),
-                // Filter by Gender using the Enum
-                SelectFilter::make('biodata.jenis_kelamin')
-                    ->label('Gender')
-                    ->options(JenisKelamin::class)
-                    ->searchable(),
-
-                // Filter by Current Class (adjust relationship if needed)
-                SelectFilter::make('kelasSantri.kelas')
-                    ->label('Current Class')
-                    ->relationship('kelasSantri.kelas', 'nama_kelas') // Assumes 'nama_kelas' on Kelas model
-                    ->searchable()
-                    ->preload(),
-
                 // Filter by User Status using the Enum
                 SelectFilter::make('status')
-                    ->label('User Status')
+                    ->label('Status')
                     ->options(UsersStatus::class)
                     ->searchable(),
 
                 // TrashedFilter::make(),
-            ])
+            ], Tables\Enums\FiltersLayout::AboveContent)
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),

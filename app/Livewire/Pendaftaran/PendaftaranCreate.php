@@ -10,12 +10,12 @@ use App\Enums\JenisSIM;
 use App\Enums\MulaiMengaji;
 use App\Enums\Negara;
 use App\Enums\PendidikanTerakhir;
-use App\Enums\StatusKuliah;
 use App\Enums\StatusKuliahCalonSantri;
 use App\Enums\StatusOrangTua;
 use App\Enums\StatusPernikahan;
 use App\Enums\StatusTinggal;
 use App\Enums\UkuranBaju;
+use App\Forms\Components\ProgramStudiField;
 use App\Models\CalonSantri;
 use App\Models\Daerah;
 use App\Models\DokumenPendaftaran;
@@ -63,6 +63,7 @@ class PendaftaranCreate extends Component implements HasForms
 
     public ?GelombangPendaftaran $activeGelombang = null;
     public bool $pendaftaranDibuka = false;
+    public ?string $daerahSambungSuggestion = null; // Untuk menampilkan sugesti atau status
     public array $requiredDokumenList = []; // To store required document info for repeater default
 
     public function mount(): void
@@ -284,12 +285,32 @@ class PendaftaranCreate extends Component implements HasForms
                                     TextInput::make('desa_sambung')
                                         ->label('Desa Sambung')
                                         ->required(),
-                                    Select::make('daerah_sambung_id')
+                                    TextInput::make('daerahSambungInput')
                                         ->label('Daerah Sambung')
-                                        ->options(Daerah::query()->pluck('nama', 'id'))
-                                        ->searchable()
-                                        ->preload()
-                                        ->required(),
+                                        ->live(debounce: '500ms')
+                                        ->afterStateUpdated(function (Set $set, ?string $state) {
+                                            $this->findDaerahSambung($state, $set); // Pass $set to update the hidden field
+                                        })
+                                        ->helperText(fn () => $this->daerahSambungSuggestion ? new HtmlString($this->daerahSambungSuggestion) : null)
+                                        ->required() // Make the input field itself required
+                                        ->rules([
+                                            // Add a custom rule to check if a daerah was found
+                                            function (Get $get) {
+                                                return function (string $attribute, $value, \Closure $fail) use ($get) {
+                                                    if (!empty($value) && is_null($get('daerah_sambung_id'))) {
+                                                        $fail('Daerah Sambung tidak ditemukan atau tidak valid.');
+                                                    }
+                                                };
+                                            }
+                                        ]),
+                                    Hidden::make('daerah_sambung_id'),
+
+                                    //Select::make('daerah_sambung_id')
+                                    //    ->label('Daerah Sambung')
+                                    //    ->options(Daerah::query()->pluck('nama', 'id'))
+                                    //    ->searchable()
+                                    //    ->preload()
+                                    //    ->required(),
                                 ]),
                         ]),
                     Wizard\Step::make('Informasi Lanjutan')
@@ -356,7 +377,7 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->required(), // Make conditional based on pendidikan?
                                     TextInput::make('program_studi')
                                         ->label('Program Studi')
-                                        ->required(), // Make conditional based on pendidikan?
+                                        ->required(),
                                     TextInput::make('angkatan_kuliah')
                                         ->label('Angkatan Kuliah')
                                         ->numeric()
@@ -476,10 +497,12 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->label('Desa Sambung Ayah')
                                         ->visible(fn (Get $get): bool => $get('status_ayah') === StatusOrangTua::HIDUP->value)
                                         ->required(fn (Get $get): bool => $get('status_ayah') === StatusOrangTua::HIDUP->value),
+
                                     Select::make('daerah_sambung_ayah_id')
                                         ->label('Daerah Sambung Ayah')
-                                        ->options(Daerah::query()->pluck('nama', 'id'))
+                                        ->relationship(name: 'daerahSambungAyah', titleAttribute: 'nama')
                                         ->searchable()
+                                        ->optionsLimit(1)
                                         ->preload()
                                         ->visible(fn (Get $get): bool => $get('status_ayah') === StatusOrangTua::HIDUP->value)
                                         ->required(fn (Get $get): bool => $get('status_ayah') === StatusOrangTua::HIDUP->value),
@@ -534,9 +557,9 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->required(fn (Get $get): bool => $get('status_ibu') === StatusOrangTua::HIDUP->value),
                                     Select::make('daerah_sambung_ibu_id')
                                         ->label('Daerah Sambung Ibu')
-                                        ->options(Daerah::query()->pluck('nama', 'id'))
+                                        ->relationship(name: 'daerahSambungIbu', titleAttribute: 'nama')
                                         ->searchable()
-                                        ->preload()
+                                        ->optionsLimit(1)
                                         ->visible(fn (Get $get): bool => $get('status_ibu') === StatusOrangTua::HIDUP->value)
                                         ->required(fn (Get $get): bool => $get('status_ibu') === StatusOrangTua::HIDUP->value),
                                 ]),
@@ -583,9 +606,9 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->visible(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
                                     Select::make('daerah_sambung_wali_id')
                                         ->label('Daerah Sambung Wali')
-                                        ->options(Daerah::query()->pluck('nama', 'id'))
+                                        ->relationship(name: 'daerahSambungWali', titleAttribute: 'nama')
                                         ->searchable()
-                                        ->preload()
+                                        ->optionsLimit(1)
                                         ->visible(fn(Get $get) => $get('hubungan_wali') !== HubunganWali::ORANGTUA->value),
                                 ]),
                         ]),
@@ -723,6 +746,27 @@ class PendaftaranCreate extends Component implements HasForms
         }
     }
 
+    public function findDaerahSambung(?string $searchTerm): void
+    {
+        if (empty($searchTerm)) {
+            $this->daerahSambungSuggestion = null;
+            $this->data['daerah_sambung_id'] = null;
+            return;
+        }
+
+        // Gunakan Quest untuk fuzzy search pada model Daerah
+        $bestMatch = Daerah::whereFuzzy('nama', $searchTerm)
+            ->orderByFuzzy('nama') // Urutkan berdasarkan relevansi
+            ->first();
+
+        if ($bestMatch) {
+            $this->daerahSambungSuggestion = '<span style="color: green;">Daerah ditemukan: <strong>' . htmlspecialchars($bestMatch->nama) . '</strong>';
+            $this->data['daerah_sambung_id'] = $bestMatch->id; // Simpan ID daerah yang cocok
+        } else {
+            $this->daerahSambungSuggestion = '<span style="color: red;">Daerah tidak ditemukan.</span>';
+            $this->data['daerah_sambung_id'] = null;
+        }
+    }
 
     public function render(): View
     {

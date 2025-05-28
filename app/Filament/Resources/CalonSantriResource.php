@@ -42,26 +42,13 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Filament\Infolists;
-use Filament\Infolists\Components\Group as InfolistGroup;
-use Filament\Infolists\Components\IconEntry;
-use Filament\Infolists\Components\RepeatableEntry;
-use Filament\Infolists\Components\Section as InfolistSection;
-use Filament\Infolists\Components\Split as InfolistSplit;
-use Filament\Infolists\Components\SpatieMediaLibraryImageEntry;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
-use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\Layout\Split as TableSplit;
-use Filament\Tables\Columns\Layout\Stack as TableStack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -679,7 +666,7 @@ class CalonSantriResource extends Resource
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('gelombangPendaftaran.pendaftaran.tahun')
-                    ->label('Tahun Daftar')
+                    ->label('Tahun')
                     ->sortable()
                     ->searchable()
                     ->formatStateUsing(fn ($state) => str($state)), // Bisa search tahun
@@ -692,37 +679,28 @@ class CalonSantriResource extends Resource
                     ->badge()
                     ->searchable()
                     ->sortable(),
-
-                IconColumn::make('status_mubaligh') // Contoh jika ingin menampilkan boolean sebagai icon
+                IconColumn::make('status_mubaligh')
                     ->label('Mubaligh')
                     ->boolean()
                     ->sortable(),
-
                 TextColumn::make('nomor_telepon')
-                    ->label('No. Telepon')
+                    ->label('Telepon')
                     ->searchable(),
-
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable(),
-
-                // --- Kolom Baru ---
                 TextColumn::make('tanggal_lahir')
                     ->label('Tanggal Lahir')
-                    ->date('d M Y') // Format tanggal Indonesia
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->date('d M Y')
+                    ->sortable(),
                 TextColumn::make('usia')
                     ->label('Usia')
                     ->state(function (CalonSantri $record): ?string {
                         if ($record->tanggal_lahir) {
-                            // Hitung usia menggunakan Carbon
                             return Carbon::parse($record->tanggal_lahir)->age . ' Thn';
                         }
                         return null;
-                    })
-                    // Usia biasanya tidak di-sort/search langsung dari DB
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    }),
                 TextColumn::make('kewarganegaraan')
                     ->label('Kewarganegaraan')
                     ->badge()
@@ -748,14 +726,13 @@ class CalonSantriResource extends Resource
                     ->label('Status Kuliah')
                     ->badge()
                     ->searchable()
-                    ->sortable(), // Tampilkan default
+                    ->sortable(),
                 TextColumn::make('alamat')
                     ->label('Alamat')
-                    ->searchable() // Search alamat mungkin kurang efektif jika panjang
-                    ->limit(50) // Batasi tampilan awal
+                    ->limit(50)
                     ->tooltip(fn (CalonSantri $record): ?string => $record->alamat),
-                TextColumn::make('daerahSambung.nama') // Akses nama dari relasi
-                ->label('Daerah Sambung')
+                TextColumn::make('daerahSambung.nama')
+                    ->label('Daerah Sambung')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('nama_ayah')
@@ -789,26 +766,49 @@ class CalonSantriResource extends Resource
                     ->badge()
                     ->searchable()
                     ->sortable(),
-                // --- Akhir Kolom Baru ---
-
                 TextColumn::make('created_at')
-                    ->label('Tanggal Input')
+                    ->label('Tanggal Mendaftar')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('pendaftaran_tahun')
-                    ->label('Tahun Pendaftaran')
+                    ->label('Tahun')
                     ->options(
                         Pendaftaran::query()
                             ->orderBy('tahun', 'desc')
                             ->pluck('tahun', 'tahun')
                     )
+                    ->default(now()->year)
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['value'],
-                            fn (Builder $query, $tahun): Builder => $query->whereHas('gelombangPendaftaran.pendaftaran', fn(Builder $q) => $q->where('tahun', $tahun))
+                            fn (Builder $query, $tahun): Builder => $query->whereHas(
+                                'gelombangPendaftaran.pendaftaran',
+                                fn(Builder $q) => $q->where('tahun', $tahun)
+                            )
+                        );
+                    }),
+
+                SelectFilter::make('pendaftaran_gelombang')
+                    ->label('Gelombang')
+                    ->options([
+                        1 => 1,
+                        2 => 2,
+                        3 => 3
+                    ])
+                    ->default(GelombangPendaftaran::where('awal_pendaftaran', '<', now())
+                        ->where('akhir_pendaftaran', '>', now())
+                        ->first()
+                        ->nomor_gelombang
+                    )
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $nomor): Builder => $query->whereHas(
+                                'gelombangPendaftaran',
+                                fn(Builder $q) => $q->where('nomor_gelombang', $nomor)
+                            )
                         );
                     }),
 
@@ -816,15 +816,12 @@ class CalonSantriResource extends Resource
                     ->label('Jenis Kelamin')
                     ->options(JenisKelamin::class),
 
-                // --- Filter Baru ---
                 SelectFilter::make('status_kuliah')
                     ->label('Status Kuliah')
-                    ->options(StatusKuliah::class) // Langsung dari Enum
-                    ->searchable(), // Buat searchable jika opsinya banyak
-                // --- Akhir Filter Baru ---
+                    ->options(StatusKuliah::class),
 
-                Tables\Filters\TrashedFilter::make(), // Jika menggunakan SoftDeletes
-            ])
+                //Tables\Filters\TrashedFilter::make(), // Jika menggunakan SoftDeletes
+            ], Tables\Enums\FiltersLayout::AboveContent)
             ->actions([
                 ActionGroup::make([
                     ViewAction::make(),
@@ -865,7 +862,6 @@ class CalonSantriResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            // Tambahkan relasi yang dibutuhkan untuk kolom & filter
             ->with(['gelombangPendaftaran.pendaftaran', 'daerahSambung'])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,

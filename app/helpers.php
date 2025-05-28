@@ -1,6 +1,7 @@
 <?php
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 if(!function_exists('getCountryList')){
@@ -449,5 +450,28 @@ if(!function_exists('getProgramStudiList')) {
             "Teknologi Pendidikan",
             "Usaha Perjalanan Wisata"
         ];
+    }
+}
+
+if (! function_exists('authUserHasRole')) {
+    /**
+     * Check if the authenticated user has a specific role.
+     *
+     * @param string $roleName The name of the role to check.
+     * @return bool True if the user has the role, false otherwise.
+     */
+    function authUserHasRole(string $roleName): bool
+    {
+        $user = Auth::user();
+
+        if ($user && method_exists($user, 'hasRole')) {
+            return $user->hasRole(\App\Enums\Role::SUPERADMIN->value);
+        }
+
+        if ($user && method_exists($user, 'hasRole')) {
+            return $user->hasRole($roleName);
+        }
+
+        return false;
     }
 }

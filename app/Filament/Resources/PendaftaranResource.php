@@ -33,7 +33,6 @@ class PendaftaranResource extends Resource
     protected static ?string $pluralModelLabel = 'Pendaftaran';
     protected static ?string $modelLabel = 'Pendaftaran';
 
-
     public static function form(Form $form): Form
     {
         return $form
@@ -241,15 +240,15 @@ class PendaftaranResource extends Resource
                     ->label('Tahun Pendaftaran')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('gelombangPendaftaran.count')
+                Tables\Columns\TextColumn::make('gelombang_pendaftaran_count')
                     ->label('Jumlah Gelombang')
                     ->counts('gelombangPendaftaran')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('dokumenPendaftaran.count')
+                Tables\Columns\TextColumn::make('dokumen_pendaftaran_count')
                     ->label('Jumlah Dokumen Wajib')
                     ->counts('dokumenPendaftaran')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('indikatorPenilaian.count')
+                Tables\Columns\TextColumn::make('indikator_penilaian_count')
                     ->label('Jumlah Indikator Nilai')
                     ->counts('indikatorPenilaian')
                     ->sortable(),
