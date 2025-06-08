@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('dokumen_pendaftaran', function (Blueprint $table) {
-            $table->boolean('wajib')->default(false);
+            $table->boolean('wajib')->default(true)->after('keterangan');
         });
     }
 
