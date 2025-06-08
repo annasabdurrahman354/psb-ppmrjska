@@ -49,6 +49,7 @@ use Filament\Tables;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ForceDeleteAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -832,13 +833,14 @@ class CalonSantriResource extends Resource
                         );
                     }),
 
-                //Tables\Filters\TrashedFilter::make(), // Jika menggunakan SoftDeletes
+                Tables\Filters\TrashedFilter::make(), // Jika menggunakan SoftDeletes
             ], Tables\Enums\FiltersLayout::AboveContent)
             ->actions([
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
                     DeleteAction::make(),
+                    //ForceDeleteAction::make()
                 ]),
             ])
             ->bulkActions([
