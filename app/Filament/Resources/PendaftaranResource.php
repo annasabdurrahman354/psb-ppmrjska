@@ -1,17 +1,11 @@
 <?php
-// app/Filament/Resources/PendaftaranResource.php
-
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PendaftaranResource\Pages;
 use App\Filament\Resources\PendaftaranResource\RelationManagers;
 use App\Models\Pendaftaran;
 use Closure;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -20,6 +14,10 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -44,7 +42,7 @@ class PendaftaranResource extends Resource
                         ->description('Masukkan tahun pendaftaran dan detail kontak.')
                         ->schema([
                             // ... (Konten Step 1 tidak berubah) ...
-                            Forms\Components\TextInput::make('tahun')
+                            TextInput::make('tahun')
                                 ->required()
                                 ->numeric()
                                 ->minValue(now()->year - 1)
@@ -52,7 +50,7 @@ class PendaftaranResource extends Resource
                                 ->default(now()->year)
                                 ->label('Tahun Pendaftaran'),
 
-                            Forms\Components\Section::make('Kontak Panitia')
+                            Section::make('Kontak Panitia')
                                 ->schema([
                                     Repeater::make('kontak_panitia')
                                         ->label('')
@@ -72,7 +70,7 @@ class PendaftaranResource extends Resource
                                         ->minItems(1),
                                 ]),
 
-                            Forms\Components\Section::make('Kontak Pengurus')
+                            Section::make('Kontak Pengurus')
                                 ->schema([
                                     Repeater::make('kontak_pengurus')
                                         ->label('')
@@ -109,6 +107,9 @@ class PendaftaranResource extends Resource
                                         ->columnSpan(2),
                                     Textarea::make('keterangan')
                                         ->label('Keterangan')
+                                        ->columnSpan(2),
+                                    Checkbox::make('wajib')
+                                        ->label('Wajib Diunggah?')
                                         ->columnSpan(2),
                                     SpatieMediaLibraryFileUpload::make('template_dokumen_file')
                                         ->label('Template Dokumen (Opsional)')

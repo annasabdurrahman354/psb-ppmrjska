@@ -44,6 +44,7 @@ class DokumenPendaftaran extends Model implements HasMedia
         'pendaftaran_id',
         'nama',
         'keterangan',
+        'wajib'
     ];
 
     /**
@@ -66,6 +67,7 @@ class DokumenPendaftaran extends Model implements HasMedia
         return [
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
+            'wajib' => 'boolean'
         ];
     }
 

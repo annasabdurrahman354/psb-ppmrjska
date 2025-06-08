@@ -50,7 +50,7 @@ use Illuminate\View\View;
 use Livewire\Component;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\TagsInput;
-use Filament\Forms\Components\Wizard; // Import Wizard
+use Filament\Forms\Components\Wizard;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
 use Livewire\WithFileUploads;
@@ -81,25 +81,23 @@ class PendaftaranCreate extends Component implements HasForms
         if ($this->activeGelombang) {
             $this->pendaftaranDibuka = true;
 
-            // Prepare required documents for the repeater default
+            // MODIFIED: Added 'wajib' to the select statement.
             $requiredDokumen = DokumenPendaftaran::where('pendaftaran_id', $this->activeGelombang->pendaftaran_id)
-                ->select('id', 'nama', 'keterangan') // Select needed fields
+                ->select('id', 'nama', 'keterangan', 'wajib') // Now also fetches the 'wajib' status
                 ->get();
-
 
             $defaultDokumenItems = [];
             foreach ($requiredDokumen as $dokumen) {
-                $this->requiredDokumenList[$dokumen->id] = $dokumen; // Store info for later use in form
+                $this->requiredDokumenList[$dokumen->id] = $dokumen; // This will now include the 'wajib' status
                 $defaultDokumenItems[] = [
                     'dokumen_pendaftaran_id' => $dokumen->id,
-                    'media' => null, // Key for Spatie field
+                    'media' => null,
                 ];
             }
 
-            // Initialize form data with the active gelombang ID and default repeater items
             $this->form->fill([
                 'gelombang_pendaftaran_id' => $this->activeGelombang->id,
-                'dokumen' => $defaultDokumenItems, // Set default items for repeater
+                'dokumen' => $defaultDokumenItems,
             ]);
 
         } else {
@@ -618,18 +616,15 @@ class PendaftaranCreate extends Component implements HasForms
                         ->schema([
                             Section::make('Upload Dokumen')
                                 ->schema([
-                                    // Adjust the repeater: Remove relationship(), modify default(), adapt schema()
                                     Repeater::make('dokumen')
                                         ->hiddenLabel()
-                                        ->relationship('dokumen') // Remove this for standalone forms
+                                        ->relationship('dokumen')
                                         ->addable(false)
                                         ->deletable(false)
                                         ->reorderable(false)
                                         ->columnSpanFull()
                                         ->grid(1)
-                                        ->required() // Repeater itself is required
-                                        ->helperText('Pastikan semua dokumen yang diperlukan telah diunggah.')
-                                        // Use the pre-filled data from mount()
+                                        ->helperText('Pastikan semua dokumen yang diperlukan telah diunggah. Tanda * menandakan wajib.')
                                         ->default(function(): ?array {
                                             // This is handled by form->fill() in mount now
                                             // If needed for dynamic updates, you might adjust logic here,
@@ -639,11 +634,22 @@ class PendaftaranCreate extends Component implements HasForms
                                         ->schema([
                                             Hidden::make('dokumen_pendaftaran_id')->required(),
 
+                                            // MODIFIED: The label will now display a red asterisk if the document is required.
                                             Placeholder::make('nama_dokumen')
-                                                ->label(function(Get $get): string {
+                                                ->label(function(Get $get): HtmlString {
                                                     $docId = $get('dokumen_pendaftaran_id');
-                                                    // Access the list populated in mount()
-                                                    return $this->requiredDokumenList[$docId]?->nama ?? 'Dokumen Tidak Dikenal';
+                                                    $dokumen = $this->requiredDokumenList[$docId] ?? null;
+
+                                                    if (!$dokumen) {
+                                                        return new HtmlString('Dokumen Tidak Dikenal');
+                                                    }
+
+                                                    $label = $dokumen->nama;
+                                                    if ($dokumen->wajib) {
+                                                        // Append a required indicator
+                                                        $label .= ' <span style="color:red">*</span>';
+                                                    }
+                                                    return new HtmlString($label);
                                                 })
                                                 ->content(function(Get $get): ?string {
                                                     $docId = $get('dokumen_pendaftaran_id');
@@ -651,11 +657,19 @@ class PendaftaranCreate extends Component implements HasForms
                                                     return $this->requiredDokumenList[$docId]?->keterangan;
                                                 }),
 
-                                            SpatieMediaLibraryFileUpload::make('media') // State path MUST match repeater item key
+                                            SpatieMediaLibraryFileUpload::make('media')
                                                 ->hiddenLabel()
-                                                ->collection('dokumen_calon_santri_berkas') // Collection on DokumenCalonSantri
-                                                ->required()
-                                                ->maxSize(5120) // 5MB
+                                                ->collection('dokumen_calon_santri_berkas')
+                                                // MODIFIED: The field is now conditionally required based on the 'wajib' property.
+                                                ->required(function (Get $get): bool {
+                                                    $docId = $get('dokumen_pendaftaran_id');
+                                                    if (!$docId || !isset($this->requiredDokumenList[$docId])) {
+                                                        return false; // Not required if document info is missing
+                                                    }
+                                                    // Required only if 'wajib' is true for this document
+                                                    return (bool) $this->requiredDokumenList[$docId]->wajib;
+                                                })
+                                                ->maxSize(5120)
                                                 ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])
                                                 ->openable()
                                                 ->downloadable()

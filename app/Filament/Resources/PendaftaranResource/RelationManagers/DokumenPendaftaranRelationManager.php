@@ -1,18 +1,14 @@
 <?php
-// app/Filament/Resources/PendaftaranResource/RelationManagers/DokumenPendaftaranRelationManager.php
-
 namespace App\Filament\Resources\PendaftaranResource\RelationManagers;
 
-use Filament\Forms;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload; // <-- Added
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Illuminate\Database\Eloquent\Model;
 
 class DokumenPendaftaranRelationManager extends RelationManager
@@ -29,15 +25,17 @@ class DokumenPendaftaranRelationManager extends RelationManager
         // Added Spatie File Upload to match the wizard form
         return $form
             ->schema([
-                Forms\Components\TextInput::make('nama')
+                TextInput::make('nama')
                     ->required()
                     ->maxLength(255)
                     ->label('Nama Dokumen')
                     ->columnSpan(2),
-                Forms\Components\Textarea::make('keterangan')
+                Textarea::make('keterangan')
                     ->label('Keterangan')
                     ->columnSpan(2),
-
+                Checkbox::make('wajib')
+                    ->label('Wajib Diunggah?')
+                    ->columnSpan(2),
                 // --- Field Upload Spatie Media Library ---
                 SpatieMediaLibraryFileUpload::make('template_dokumen_file') // Same temporary name as in wizard
                     ->label('Template Dokumen (Opsional)')
@@ -58,6 +56,7 @@ class DokumenPendaftaranRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('keterangan')
                     ->limit(50)
                     ->tooltip(fn (Model $record): ?string => $record->keterangan), // Show full text on hover
+                Tables\Columns\CheckboxColumn::make('wajib'),
                 Tables\Columns\TextColumn::make('template')
                     ->label('Template')
                     ->getStateUsing(fn (Model $record) => $record->getFirstMediaUrl('dokumen_pendaftaran_template')), // Check if media exists
